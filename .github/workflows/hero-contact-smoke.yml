@@ -1,0 +1,99 @@
+name: Hero Contact Smoke
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          node --check app.js
+          node --check refine.js
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.55.0
+      - name: Locate Chrome
+        run: |
+          CHROME=$(which google-chrome || which chromium || which chromium-browser)
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/portfolio.log 2>&1 &
+          sleep 2
+      - name: Browser smoke
+        run: |
+          cat > smoke.mjs <<'NODE'
+          import { chromium } from 'playwright-core';
+          import fs from 'node:fs';
+          const out={passes:[],failures:[],runtimeErrors:[]};
+          const check=(name,ok,detail='')=>{(ok?out.passes:out.failures).push({name,detail});if(!ok)process.exitCode=1};
+          const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox']});
+          const page=await browser.newPage({viewport:{width:1440,height:1000},colorScheme:'dark'});
+          page.on('pageerror',e=>out.runtimeErrors.push('page:'+e.message));
+          await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await page.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await page.reload({waitUntil:'networkidle'});
+          await page.evaluate(()=>{document.documentElement.style.scrollBehavior='auto'});
+
+          check('hero role simplified',(await page.locator('.hero-intro span').innerText())==='Cybersecurity Analyst');
+          check('old networking phrase removed from hero',!(await page.locator('.hero-intro').innerText()).includes('Cybersecurity & Networking'));
+          const heroStyle=await page.locator('.portrait').evaluate(e=>({radius:getComputedStyle(e).borderRadius,mask:getComputedStyle(e).maskImage,filter:getComputedStyle(e).filter}));
+          check('hero has soft mask',heroStyle.mask&&heroStyle.mask!=='none',JSON.stringify(heroStyle));
+          check('hero remains monochrome default',heroStyle.filter.includes('grayscale(1)'),heroStyle.filter);
+          await page.locator('#portrait-stage').hover();
+          await page.waitForTimeout(180);
+          check('hero returns to color on hover',await page.locator('.portrait').evaluate(e=>!getComputedStyle(e).filter.includes('grayscale(1)')));
+          await page.screenshot({path:'hero-polish.png',fullPage:false});
+
+          await page.locator('#contact').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(250);
+          const email=page.locator('[data-contact="email"]');
+          const phone=page.locator('[data-contact="phone"]');
+          await email.click();
+          await phone.click();
+          check('two emails stacked',await email.locator('.contact-value-stack span').count()===2);
+          check('two phones stacked',await phone.locator('.contact-value-stack span').count()===2);
+          check('Uganda phone present',(await phone.innerText()).includes('+256 706 222 076'));
+          check('email values correct',(await email.innerText()).includes('baayacyril@gmail.com')&&(await email.innerText()).includes('baayacyril@outlook.com'));
+          const stackDisplay=await email.locator('.contact-value-stack').evaluate(e=>getComputedStyle(e).display);
+          check('contacts use vertical stack',stackDisplay==='grid',stackDisplay);
+          check('desktop no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          await page.screenshot({path:'contact-stack.png',fullPage:false});
+
+          const mobile=await browser.newPage({viewport:{width:390,height:844},colorScheme:'dark'});
+          mobile.on('pageerror',e=>out.runtimeErrors.push('mobile:'+e.message));
+          await mobile.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await mobile.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await mobile.reload({waitUntil:'networkidle'});
+          await mobile.locator('#contact').scrollIntoViewIfNeeded();
+          await mobile.locator('[data-contact="email"]').click();
+          await mobile.locator('[data-contact="phone"]').click();
+          check('mobile contact stacks fit',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          check('mobile email shows two lines',await mobile.locator('[data-contact="email"] .contact-value-stack span').count()===2);
+          await mobile.screenshot({path:'mobile-contact-stack.png',fullPage:false});
+          check('no runtime errors',out.runtimeErrors.length===0,out.runtimeErrors.join('\n'));
+          fs.writeFileSync('hero-contact-results.json',JSON.stringify(out,null,2));
+          await browser.close();
+          if(out.failures.length||out.runtimeErrors.length) process.exit(1);
+          NODE
+          node smoke.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hero-contact-evidence
+          path: |
+            hero-contact-results.json
+            hero-polish.png
+            contact-stack.png
+            mobile-contact-stack.png
