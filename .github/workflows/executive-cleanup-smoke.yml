@@ -49,6 +49,7 @@ jobs:
           await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
           await page.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
           await page.reload({waitUntil:'networkidle'});
+          await page.evaluate(()=>{ document.documentElement.style.scrollBehavior='auto'; });
 
           check('brand simplified',await page.locator('.brand-copy').innerText()==='CYBERSECURITY PORTFOLIO');
           check('neural lock removed',await page.locator('#neural-lock').count()===0);
@@ -127,6 +128,7 @@ jobs:
           await mobile.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
           await mobile.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
           await mobile.reload({waitUntil:'networkidle'});
+          await mobile.evaluate(()=>{ document.documentElement.style.scrollBehavior='auto'; });
           check('mobile brand remains contained',await mobile.locator('.brand').evaluate(e=>e.getBoundingClientRect().right<innerWidth*.64));
           check('mobile no horizontal overflow',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
           await mobile.locator('#about').scrollIntoViewIfNeeded();
