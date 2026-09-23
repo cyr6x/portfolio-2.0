@@ -817,7 +817,10 @@
     const rx = Math.min(rect.width * .355, 420);
     const ry = Math.min(rect.height * .31, 230);
     const held = contactNodes.find(node => node.matches(':hover,:focus-visible'));
-    if (!reduced && !held) contactClock += dt * .000042;
+    const pointerNear =
+      pointerX >= rect.left - 40 && pointerX <= rect.right + 40 &&
+      pointerY >= rect.top - 40 && pointerY <= rect.bottom + 40;
+    if (!reduced && !held && !pointerNear) contactClock += dt * .000042;
 
     contactNodes.forEach((node,index) => {
       const angle = contactPhases[index % contactPhases.length] + contactClock;
