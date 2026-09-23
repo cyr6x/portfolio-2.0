@@ -334,7 +334,7 @@
     if (!rootLoader || rootLoader.classList.contains('is-leaving')) return;
     rootLoader.classList.add('is-leaving');
     try { sessionStorage.setItem('portfolio-root-booted','1'); } catch (_) {}
-    setTimeout(() => { root.dataset.booted = 'true'; }, 580);
+    setTimeout(() => { root.dataset.booted = 'true'; }, 420);
   }
 
   let alreadyBooted = false;
@@ -344,7 +344,7 @@
   } else if (rootLoader) {
     const bootStates = ['mounting evidence graph','mapping security nodes','warming orbital renderer','opening /root'];
     const started = performance.now();
-    const duration = 1050;
+    const duration = 700;
     const tickBoot = now => {
       const p = Math.min(1,(now-started)/duration);
       const eased = 1 - Math.pow(1-p,3);
@@ -353,7 +353,7 @@
       if (rootLoaderPercent) rootLoaderPercent.textContent = percent + '%';
       if (rootLoaderState) rootLoaderState.textContent = bootStates[Math.min(bootStates.length-1,Math.floor(eased*bootStates.length))];
       if (p < 1) requestAnimationFrame(tickBoot);
-      else setTimeout(finishRootBoot,180);
+      else setTimeout(finishRootBoot,110);
     };
     requestAnimationFrame(tickBoot);
     rootLoaderSkip?.addEventListener('click', finishRootBoot);
