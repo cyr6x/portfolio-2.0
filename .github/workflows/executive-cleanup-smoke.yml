@@ -66,16 +66,15 @@ jobs:
           await page.waitForTimeout(120);
           check('moons hidden during portrait phase',await page.locator('.planet').evaluateAll(nodes=>nodes.every(n=>parseFloat(getComputedStyle(n).opacity)===0)));
 
-          const identity=page.locator('#identity');
-          const identityBox=await identity.boundingBox();
-          const identityHeight=await identity.evaluate(e=>e.offsetHeight);
-          if(identityBox){
-            const y=Math.max(0,identityBox.y+Math.max(1,identityHeight-768)*.82);
-            await page.evaluate(v=>scrollTo(0,v),y);
-            await page.waitForTimeout(220);
-          }
+          await page.evaluate(()=>{
+            const identity=document.querySelector('#identity');
+            const y=identity.offsetTop+Math.max(1,identity.offsetHeight-innerHeight)*.84;
+            scrollTo(0,y);
+          });
+          await page.waitForTimeout(420);
           check('moons appear after SSH phase',await page.locator('#portrait-stage').evaluate(e=>e.classList.contains('galaxy-mode')||e.classList.contains('phase-planets')));
-          check('planet orbit receives pointer only post SSH',await page.locator('.planet').first().evaluate(e=>getComputedStyle(e).pointerEvents!=='none'));
+          check('planet orbit receives pointer only post SSH',await page.locator('.planet').first().evaluate(e=>getComputedStyle(e).pointerEvents!=='none'&&parseFloat(getComputedStyle(e).opacity)>0));
+          await page.screenshot({path:'post-ssh-moons.png',fullPage:false});
 
           await page.locator('#about').scrollIntoViewIfNeeded();
           await page.waitForTimeout(180);
@@ -150,4 +149,5 @@ jobs:
             executive-cleanup-results.json
             about-clean.png
             security-work-clean.png
+            post-ssh-moons.png
             mobile-clean.png
