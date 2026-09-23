@@ -325,6 +325,43 @@
 (() => {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const root = document.documentElement;
+  const rootLoader = document.querySelector('#root-loader');
+  const rootLoaderSkip = document.querySelector('#root-loader-skip');
+  const rootLoaderState = document.querySelector('#root-loader-state');
+  const rootLoaderPercent = document.querySelector('#root-loader-percent');
+
+  function finishRootBoot() {
+    if (!rootLoader || rootLoader.classList.contains('is-leaving')) return;
+    rootLoader.classList.add('is-leaving');
+    try { sessionStorage.setItem('portfolio-root-booted','1'); } catch (_) {}
+    setTimeout(() => { root.dataset.booted = 'true'; }, 580);
+  }
+
+  let alreadyBooted = false;
+  try { alreadyBooted = sessionStorage.getItem('portfolio-root-booted') === '1'; } catch (_) {}
+  if (alreadyBooted || reduced) {
+    root.dataset.booted = 'true';
+  } else if (rootLoader) {
+    const bootStates = ['mounting evidence graph','mapping security nodes','warming orbital renderer','opening /root'];
+    const started = performance.now();
+    const duration = 1050;
+    const tickBoot = now => {
+      const p = Math.min(1,(now-started)/duration);
+      const eased = 1 - Math.pow(1-p,3);
+      const percent = Math.round(eased*100);
+      rootLoader.style.setProperty('--boot-progress', String(eased));
+      if (rootLoaderPercent) rootLoaderPercent.textContent = percent + '%';
+      if (rootLoaderState) rootLoaderState.textContent = bootStates[Math.min(bootStates.length-1,Math.floor(eased*bootStates.length))];
+      if (p < 1) requestAnimationFrame(tickBoot);
+      else setTimeout(finishRootBoot,180);
+    };
+    requestAnimationFrame(tickBoot);
+    rootLoaderSkip?.addEventListener('click', finishRootBoot);
+    addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === 'Escape') && !rootLoader.classList.contains('is-leaving')) finishRootBoot();
+    }, {once:true});
+  }
+
   const themeToggle = document.querySelector('#theme-toggle');
   const themeLabel = themeToggle && themeToggle.querySelector('.theme-label');
 
@@ -357,7 +394,7 @@
     const ctx = cosmos.getContext('2d', {alpha:true});
     if (ctx) {
       let w = 1, h = 1, dpr = 1, frame = 0, last = 0, running = !reduced;
-      let stars = [], motes = [], scrollWarp = 0;
+      let stars = [], motes = [], scrollWarp = 0, journeyProgress = 0;
 
       const makeField = () => {
         const density = Math.max(95, Math.min(210, Math.floor((w * h) / 8400)));
@@ -390,9 +427,22 @@
         makeField();
       };
 
-      const palette = () => root.dataset.theme === 'light'
-        ? {star:'39,57,77', faint:'53,78,101', accent:'200,37,52', nebula:'79,104,132'}
-        : {star:'223,232,242', faint:'126,146,171', accent:'255,48,56', nebula:'72,82,112'};
+      const sceneAccents = {
+        identity:'255,48,56',
+        projects:'255,48,56',
+        investigations:'139,120,255',
+        archive:'96,185,255',
+        arsenal:'117,216,154',
+        roadmap:'242,189,89',
+        contact:'255,48,56'
+      };
+      const palette = () => {
+        const scene = document.body.dataset.scene || 'identity';
+        const accent = sceneAccents[scene] || sceneAccents.identity;
+        return root.dataset.theme === 'light'
+          ? {star:'39,57,77', faint:'53,78,101', accent, nebula:'79,104,132'}
+          : {star:'223,232,242', faint:'126,146,171', accent, nebula:'72,82,112'};
+      };
 
       const drawComet = (time, offset, direction) => {
         const cycle = ((time * .000035 + offset) % 1);
@@ -410,6 +460,45 @@
         ctx.beginPath();
         ctx.moveTo(x - len * direction, y - len * .22);
         ctx.lineTo(x, y);
+        ctx.stroke();
+      };
+
+      const cubic = (a,b,c,d,t) => {
+        const u = 1-t;
+        return u*u*u*a + 3*u*u*t*b + 3*u*t*t*c + t*t*t*d;
+      };
+
+      const drawJourneyProbe = pal => {
+        if (journeyProgress < .08 || journeyProgress > .94) return;
+        const t = Math.max(0,Math.min(1,(journeyProgress-.08)/.86));
+        const x = cubic(-w*.08,w*.22,w*.78,w*1.08,t);
+        const y = cubic(h*.72,h*.12,h*.88,h*.28,t);
+        const t2 = Math.max(0,t-.032);
+        const tx = cubic(-w*.08,w*.22,w*.78,w*1.08,t2);
+        const ty = cubic(h*.72,h*.12,h*.88,h*.28,t2);
+
+        const trail = ctx.createLinearGradient(tx,ty,x,y);
+        trail.addColorStop(0,'rgba(' + pal.accent + ',0)');
+        trail.addColorStop(1,'rgba(' + pal.accent + ',.52)');
+        ctx.strokeStyle = trail;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(tx,ty);
+        ctx.lineTo(x,y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x,y,2.2,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(' + pal.accent + ',.9)';
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = 'rgba(' + pal.accent + ',.7)';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.arc(x,y,8.5,0,Math.PI*2);
+        ctx.strokeStyle = 'rgba(' + pal.accent + ',.16)';
+        ctx.lineWidth = .7;
         ctx.stroke();
       };
 
@@ -477,12 +566,14 @@
           drawComet(time,.17,1);
           drawComet(time,.69,-1);
         }
+        drawJourneyProbe(pal);
         if (running) frame = requestAnimationFrame(drawCosmos);
       };
 
       addEventListener('scroll', () => {
         const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-        scrollWarp = Math.min(1, scrollY / max);
+        journeyProgress = Math.max(0,Math.min(1,scrollY / max));
+        scrollWarp = journeyProgress;
       }, {passive:true});
       addEventListener('resize', resizeCosmos, {passive:true});
       addEventListener('cosmic-theme-change', () => { if (!running) drawCosmos(0); });
@@ -508,6 +599,32 @@
   const identity = document.querySelector('#identity');
   const planets = portrait ? [...portrait.querySelectorAll('.planet')] : [];
   const core = portrait && portrait.querySelector('.security-core');
+  const neuralLock = document.querySelector('#neural-lock');
+  const neuralLockTitle = neuralLock && neuralLock.querySelector('b');
+  const neuralLockHint = neuralLock && neuralLock.querySelector('small');
+  let gravityIndex = 0;
+  let neuralLocked = false;
+
+  const setGravityNode = index => {
+    gravityIndex = Math.max(0,Math.min(planets.length-1,index));
+    planets.forEach((planet,i) => planet.classList.toggle('gravity-active', i === gravityIndex));
+  };
+
+  const setNeuralLock = locked => {
+    neuralLocked = Boolean(locked);
+    portrait?.classList.toggle('is-locked',neuralLocked);
+    neuralLock?.setAttribute('aria-pressed',String(neuralLocked));
+    if (neuralLocked) {
+      setGravityNode(gravityIndex);
+      portrait?.classList.add('is-alive');
+      if (core) core.classList.add('neural-flare');
+      if (neuralLockTitle) neuralLockTitle.textContent = 'RELEASE NEURAL MAP';
+      if (neuralLockHint) neuralLockHint.textContent = 'node 0' + (gravityIndex + 1) + ' locked';
+    } else {
+      if (neuralLockTitle) neuralLockTitle.textContent = 'LOCK NEURAL MAP';
+      if (neuralLockHint) neuralLockHint.textContent = 'freeze the active gravity node';
+    }
+  };
 
   if (portrait && planets.length) {
     portrait.addEventListener('pointermove', event => {
@@ -516,15 +633,26 @@
       const nx = (event.clientX - rect.left) / rect.width - .5;
       const ny = (event.clientY - rect.top) / rect.height - .5;
       const index = ny < 0 ? (nx < 0 ? 0 : 1) : (nx < 0 ? 2 : 3);
-      planets.forEach((planet,i) => planet.classList.toggle('gravity-active', i === index));
+      if (!neuralLocked) setGravityNode(index);
       if (core) core.classList.add('neural-flare');
     }, {passive:true});
 
     portrait.addEventListener('pointerleave', () => {
+      if (neuralLocked) {
+        setGravityNode(gravityIndex);
+        portrait.classList.add('is-alive');
+        if (core) core.classList.add('neural-flare');
+        return;
+      }
       planets.forEach(planet => planet.classList.remove('gravity-active'));
       if (core) core.classList.remove('neural-flare');
     });
   }
+
+  neuralLock?.addEventListener('click', () => setNeuralLock(!neuralLocked));
+  addEventListener('keydown', event => {
+    if (event.key === 'Escape' && neuralLocked) setNeuralLock(false);
+  });
 
   let phaseFrame = 0;
   function updateIdentityPhases() {
@@ -556,11 +684,55 @@
   }, {passive:true});
   updateIdentityPhases();
 
+  /* Cinematic planet-to-planet scene shifts and kinetic reveals. */
+  const sceneMap = [
+    [document.querySelector('#identity'),'identity'],
+    [document.querySelector('#work'),'projects'],
+    [document.querySelector('#investigations'),'investigations'],
+    [document.querySelector('#archive'),'archive'],
+    [document.querySelector('#arsenal'),'arsenal'],
+    [document.querySelector('#roadmap'),'roadmap'],
+    [document.querySelector('#contact'),'contact']
+  ].filter(([node]) => Boolean(node));
+
+  if ('IntersectionObserver' in window) {
+    const sceneObserver = new IntersectionObserver(entries => {
+      const live = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!live) return;
+      const found = sceneMap.find(([node]) => node === live.target);
+      if (found) document.body.dataset.scene = found[1];
+    }, {rootMargin:'-30% 0px -42% 0px',threshold:[0,.08,.2,.4]});
+    sceneMap.forEach(([node]) => sceneObserver.observe(node));
+
+    document.querySelectorAll('.section-title,.work-heading h2,.degree-copy h2,.about-note h1').forEach(heading => {
+      heading.classList.add('scene-kinetic','scene-await');
+      const headingObserver = new IntersectionObserver(([entry],obs) => {
+        if (!entry.isIntersecting) return;
+        heading.classList.remove('scene-await');
+        heading.classList.add('scene-live');
+        obs.disconnect();
+      }, {threshold:.35});
+      headingObserver.observe(heading);
+    });
+  } else {
+    document.body.dataset.scene = 'identity';
+  }
+
+  document.querySelectorAll('.archive-groups .lab-row').forEach(row => {
+    row.addEventListener('pointermove', event => {
+      const rect = row.getBoundingClientRect();
+      row.style.setProperty('--gallery-x', ((event.clientX-rect.left)/Math.max(1,rect.width)*100) + '%');
+      row.style.setProperty('--gallery-y', ((event.clientY-rect.top)/Math.max(1,rect.height)*100) + '%');
+    }, {passive:true});
+  });
+
   /* Magnetic event-horizon interaction for clickable words. */
   const finePointer = matchMedia('(pointer:fine)').matches;
   if (finePointer && !reduced) {
     const targets = [...document.querySelectorAll(
-      '#nav-links a,.pill,.case-open,.repo-link,.lab-row,.footer-links a,.theme-toggle'
+      '#nav-links a,.pill,.case-open,.repo-link,.lab-row,.footer-links a,.theme-toggle,.neural-lock'
     )];
     targets.forEach(target => {
       target.classList.add('gravity-link');
