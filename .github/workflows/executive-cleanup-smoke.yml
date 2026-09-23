@@ -60,8 +60,8 @@ jobs:
           const midProgress=await page.locator('#traverse-progress').evaluate(e=>parseFloat(getComputedStyle(e).getPropertyValue('--site-progress')));
           check('comet progress advances',midProgress>.2,JSON.stringify({topProgress,midProgress}));
 
-          await page.locator('#identity').scrollIntoViewIfNeeded();
-          await page.waitForTimeout(150);
+          await page.evaluate(()=>scrollTo(0,0));
+          await page.waitForTimeout(180);
           await page.locator('#portrait-stage').hover({position:{x:300,y:220}});
           await page.waitForTimeout(120);
           check('moons hidden during portrait phase',await page.locator('.planet').evaluateAll(nodes=>nodes.every(n=>parseFloat(getComputedStyle(n).opacity)===0)));
