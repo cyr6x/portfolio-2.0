@@ -799,3 +799,126 @@
     });
   }
 })();
+
+
+/* Orbital controls: moons around SECURITY + recruiter-safe contact orbit. */
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const desktopQuery = matchMedia('(min-width: 821px)');
+  const portrait = document.querySelector('#portrait-stage');
+  const planetSystem = portrait && portrait.querySelector('.planet-system');
+  const moons = planetSystem ? [...planetSystem.querySelectorAll('.planet')] : [];
+  const contactCard = document.querySelector('.contact-card');
+  const contactNodes = contactCard ? [...contactCard.querySelectorAll('.contact-side .pill')] : [];
+
+  let pointerX = -9999;
+  let pointerY = -9999;
+  let last = performance.now();
+  let securityClock = 0;
+  let contactClock = 0;
+  let frame = 0;
+
+  addEventListener('pointermove', event => {
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+  }, {passive:true});
+  addEventListener('pointerleave', () => {
+    pointerX = pointerY = -9999;
+  });
+
+  const phases = [Math.PI * 1.02, Math.PI * 1.84, Math.PI * .72, Math.PI * .18];
+  const contactPhases = [Math.PI * .18, Math.PI * .82, Math.PI * 1.18, Math.PI * 1.82];
+
+  function setMoonPosition(node, x, y, pullX = 0, pullY = 0, pulled = false) {
+    node.style.setProperty('--moon-x', x.toFixed(2) + 'px');
+    node.style.setProperty('--moon-y', y.toFixed(2) + 'px');
+    node.style.setProperty('--moon-pull-x', pullX.toFixed(2) + 'px');
+    node.style.setProperty('--moon-pull-y', pullY.toFixed(2) + 'px');
+    node.classList.toggle('moon-pulled', pulled);
+  }
+
+  function drawMoons(dt) {
+    if (!desktopQuery.matches || !portrait || !planetSystem || !moons.length) return;
+    const rect = planetSystem.getBoundingClientRect();
+    const rx = Math.min(rect.width * .34, 345);
+    const ry = Math.min(rect.height * .27, 205);
+    const hovered = moons.some(node => node.matches(':hover,:focus-visible'));
+    if (!reduced && !hovered) securityClock += dt * .000105;
+
+    moons.forEach((node, index) => {
+      const angle = phases[index % phases.length] + securityClock;
+      const x = Math.cos(angle) * rx;
+      const y = Math.sin(angle) * ry;
+      const sx = rect.left + rect.width / 2 + x;
+      const sy = rect.top + rect.height / 2 + y;
+      const dx = pointerX - sx;
+      const dy = pointerY - sy;
+      const dist = Math.hypot(dx,dy);
+      const radius = 165;
+      const proximity = Math.max(0,1 - dist / radius);
+      const pull = proximity * proximity;
+      const maxPull = 68;
+      const norm = dist > 1 ? 1 / dist : 0;
+      const pullX = dx * norm * maxPull * pull;
+      const pullY = dy * norm * maxPull * pull;
+      setMoonPosition(node,x,y,pullX,pullY,proximity > .08);
+    });
+  }
+
+  function drawContactOrbit(dt) {
+    if (!desktopQuery.matches || !contactCard || !contactNodes.length) return;
+    const rect = contactCard.getBoundingClientRect();
+    const rx = Math.min(rect.width * .355, 420);
+    const ry = Math.min(rect.height * .31, 230);
+    const held = contactNodes.find(node => node.matches(':hover,:focus-visible'));
+    if (!reduced && !held) contactClock += dt * .000075;
+
+    contactNodes.forEach((node,index) => {
+      const angle = contactPhases[index % contactPhases.length] + contactClock;
+      node.style.setProperty('--contact-orbit-x',(Math.cos(angle)*rx).toFixed(2) + 'px');
+      node.style.setProperty('--contact-orbit-y',(Math.sin(angle)*ry).toFixed(2) + 'px');
+      node.classList.toggle('orbit-held',node === held);
+    });
+  }
+
+  function clearMobileState() {
+    if (desktopQuery.matches) return;
+    moons.forEach(node => {
+      node.style.removeProperty('--moon-x');
+      node.style.removeProperty('--moon-y');
+      node.style.removeProperty('--moon-pull-x');
+      node.style.removeProperty('--moon-pull-y');
+      node.classList.remove('moon-pulled');
+    });
+    contactNodes.forEach(node => {
+      node.style.removeProperty('--contact-orbit-x');
+      node.style.removeProperty('--contact-orbit-y');
+      node.classList.remove('orbit-held');
+    });
+  }
+
+  function orbitFrame(now) {
+    const dt = Math.min(48,Math.max(0,now-last));
+    last = now;
+    drawMoons(dt);
+    drawContactOrbit(dt);
+    frame = requestAnimationFrame(orbitFrame);
+  }
+
+  desktopQuery.addEventListener?.('change', clearMobileState);
+
+  if (reduced) {
+    drawMoons(0);
+    drawContactOrbit(0);
+  } else {
+    frame = requestAnimationFrame(orbitFrame);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frame);
+      } else {
+        last = performance.now();
+        frame = requestAnimationFrame(orbitFrame);
+      }
+    });
+  }
+})();
