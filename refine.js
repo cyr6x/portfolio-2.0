@@ -536,6 +536,8 @@
     const galaxy = Math.max(0, Math.min(1, (progress - .16) / .56));
     portrait.style.setProperty('--brain-zoom', String(.72 + galaxy * .72));
     portrait.style.setProperty('--brain-flare', String(galaxy));
+    portrait.style.setProperty('--brain-brightness', String(.78 + galaxy * .62));
+    portrait.style.setProperty('--brain-saturation', String(.78 + galaxy * .72));
     portrait.classList.toggle('phase-ssh', progress > .34 && progress < .72);
     portrait.classList.toggle('phase-planets', progress >= .68);
 
