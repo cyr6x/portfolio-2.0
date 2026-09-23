@@ -1,0 +1,153 @@
+name: Executive Cleanup Smoke
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          node --check app.js
+          node --check refine.js
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.55.0
+      - name: Locate Chrome
+        run: |
+          CHROME=$(which google-chrome || which chromium || which chromium-browser)
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 >/tmp/portfolio.log 2>&1 &
+          sleep 2
+      - name: Browser smoke
+        run: |
+          cat > smoke.mjs <<'NODE'
+          import { chromium } from 'playwright-core';
+          import fs from 'node:fs';
+
+          const out={passes:[],failures:[],runtimeErrors:[]};
+          const check=(name,ok,detail='')=>{
+            (ok?out.passes:out.failures).push({name,detail});
+            if(!ok) process.exitCode=1;
+          };
+          const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox']});
+          const ctx=await browser.newContext({viewport:{width:1365,height:768},colorScheme:'dark'});
+          const page=await ctx.newPage();
+          page.on('pageerror',e=>out.runtimeErrors.push('page:'+e.message));
+          page.on('console',m=>{if(m.type()==='error'&&!/favicon|font/i.test(m.text()))out.runtimeErrors.push('console:'+m.text())});
+          await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await page.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await page.reload({waitUntil:'networkidle'});
+
+          check('brand simplified',await page.locator('.brand-copy').innerText()==='CYBERSECURITY PORTFOLIO');
+          check('neural lock removed',await page.locator('#neural-lock').count()===0);
+          check('footer simplified',(await page.locator('.footer-inner>span').innerText()).toLowerCase().includes('cybersecurity portfolio')&&!(await page.locator('.footer-inner>span').innerText()).toLowerCase().includes('networking'));
+
+          const topProgress=await page.locator('#traverse-progress').evaluate(e=>getComputedStyle(e).getPropertyValue('--site-progress').trim());
+          await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight*.45));
+          await page.waitForTimeout(150);
+          const midProgress=await page.locator('#traverse-progress').evaluate(e=>parseFloat(getComputedStyle(e).getPropertyValue('--site-progress')));
+          check('comet progress advances',midProgress>.2,JSON.stringify({topProgress,midProgress}));
+
+          await page.locator('#identity').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(150);
+          await page.locator('#portrait-stage').hover({position:{x:300,y:220}});
+          await page.waitForTimeout(120);
+          check('moons hidden during portrait phase',await page.locator('.planet').evaluateAll(nodes=>nodes.every(n=>parseFloat(getComputedStyle(n).opacity)===0)));
+
+          const identity=page.locator('#identity');
+          const identityBox=await identity.boundingBox();
+          const identityHeight=await identity.evaluate(e=>e.offsetHeight);
+          if(identityBox){
+            const y=Math.max(0,identityBox.y+Math.max(1,identityHeight-768)*.82);
+            await page.evaluate(v=>scrollTo(0,v),y);
+            await page.waitForTimeout(220);
+          }
+          check('moons appear after SSH phase',await page.locator('#portrait-stage').evaluate(e=>e.classList.contains('galaxy-mode')||e.classList.contains('phase-planets')));
+          check('planet orbit receives pointer only post SSH',await page.locator('.planet').first().evaluate(e=>getComputedStyle(e).pointerEvents!=='none'));
+
+          await page.locator('#about').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(180);
+          const aboutRects=await page.evaluate(()=>{
+            const h=document.querySelector('#about-heading').getBoundingClientRect();
+            const b=document.querySelector('.about-body').getBoundingClientRect();
+            return {heading:{x:h.x,y:h.y,w:h.width,h:h.height,right:h.right,bottom:h.bottom},body:{x:b.x,y:b.y,w:b.width,h:b.height,right:b.right,bottom:b.bottom}};
+          });
+          check('about content has professional separation',aboutRects.heading.right+50<aboutRects.body.x,JSON.stringify(aboutRects));
+          check('about nav targets actual about section',(await page.locator('#nav-links a').first().getAttribute('href'))==='#about');
+          await page.screenshot({path:'about-clean.png',fullPage:false});
+
+          // Put the work sequence at a settled position where cards are readable.
+          const work=page.locator('#work');
+          const workTop=await work.evaluate(e=>e.getBoundingClientRect().top+scrollY);
+          const workHeight=await work.evaluate(e=>e.offsetHeight);
+          const settled=workTop+Math.max(0,(workHeight-768)*.55);
+          await page.evaluate(v=>scrollTo(0,v),settled);
+          await page.waitForTimeout(250);
+          const spacing=await page.evaluate(()=>{
+            const heading=document.querySelector('.work-heading').getBoundingClientRect();
+            const desc=document.querySelector('.work-heading p').getBoundingClientRect();
+            const cards=[...document.querySelectorAll('.case-card')].map(e=>e.getBoundingClientRect()).filter(r=>r.right>0&&r.left<innerWidth);
+            const card=cards.sort((a,b)=>a.left-b.left)[0];
+            return {headingBottom:heading.bottom,descBottom:desc.bottom,cardTop:card?.top??0,gap:(card?.top??0)-desc.bottom};
+          });
+          check('security work heading clears project cards',spacing.gap>=28,JSON.stringify(spacing));
+          const cardFit=await page.locator('.case-card').first().evaluate(card=>{
+            const actions=card.querySelector('.case-actions')?.getBoundingClientRect();
+            const rect=card.getBoundingClientRect();
+            return !actions||actions.bottom<=rect.bottom-12;
+          });
+          check('project card actions fit inside card',cardFit);
+          await page.screenshot({path:'security-work-clean.png',fullPage:false});
+
+          await page.locator('#archive').scrollIntoViewIfNeeded();
+          await page.locator('.lab-row[data-case]').first().click();
+          await page.waitForTimeout(150);
+          const dlg=await page.locator('#dialog-body').evaluate(e=>({client:e.clientHeight,scroll:e.scrollHeight,overflow:getComputedStyle(e).overflowY}));
+          check('case file remains fully scrollable',dlg.scroll<=dlg.client+2||dlg.overflow==='auto',JSON.stringify(dlg));
+          await page.keyboard.press('Escape');
+
+          await page.locator('#theme-toggle').click();
+          await page.waitForTimeout(580);
+          check('light mode retained',await page.evaluate(()=>document.documentElement.dataset.theme==='light'));
+          check('desktop has no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+
+          const mobile=await browser.newPage({viewport:{width:390,height:844},colorScheme:'dark'});
+          mobile.on('pageerror',e=>out.runtimeErrors.push('mobile:'+e.message));
+          await mobile.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await mobile.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await mobile.reload({waitUntil:'networkidle'});
+          check('mobile brand remains contained',await mobile.locator('.brand').evaluate(e=>e.getBoundingClientRect().right<innerWidth*.64));
+          check('mobile no horizontal overflow',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          await mobile.locator('#about').scrollIntoViewIfNeeded();
+          await mobile.waitForTimeout(120);
+          check('mobile about stacks',await mobile.locator('.about-grid').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length===1));
+          await mobile.screenshot({path:'mobile-clean.png',fullPage:false});
+
+          check('no runtime errors',out.runtimeErrors.length===0,out.runtimeErrors.join('\n'));
+          fs.writeFileSync('executive-cleanup-results.json',JSON.stringify(out,null,2));
+          await browser.close();
+          if(out.failures.length||out.runtimeErrors.length) process.exit(1);
+          NODE
+          node smoke.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: executive-cleanup-evidence
+          path: |
+            executive-cleanup-results.json
+            about-clean.png
+            security-work-clean.png
+            mobile-clean.png
