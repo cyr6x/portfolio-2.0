@@ -1,0 +1,322 @@
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const portrait = document.querySelector('#portrait-stage');
+
+  if (portrait) {
+    portrait.addEventListener('pointerenter', () => {
+      if (!reduced) portrait.classList.add('is-alive');
+    });
+
+    portrait.addEventListener('pointermove', event => {
+      if (reduced) return;
+      const rect = portrait.getBoundingClientRect();
+      const nx = (event.clientX - rect.left) / rect.width - 0.5;
+      const ny = (event.clientY - rect.top) / rect.height - 0.5;
+      portrait.style.setProperty('--portrait-pan-x', (nx * 8) + 'px');
+      portrait.style.setProperty('--portrait-pan-y', (ny * 6) + 'px');
+    });
+
+    portrait.addEventListener('pointerleave', () => {
+      portrait.classList.remove('is-alive');
+      portrait.style.setProperty('--portrait-pan-x', '0px');
+      portrait.style.setProperty('--portrait-pan-y', '0px');
+    });
+  }
+
+  const correctedCases = {
+    sirts: {
+      title: 'CCorp SIRTS — Final-Year Capstone',
+      lede: 'My BSc final-year capstone project: an incident and service-request tracking system shaped around the operational needs of a fictional SOC.',
+      role: 'Capstone project work delivered in a team context, with my portfolio evidence focused on incident workflow, role boundaries, auditability, testing and technical evaluation.',
+      method: 'Mapped incident and service-request lifecycles, role-based access, state transitions and audit requirements into a database-backed workflow that could be tested against defined requirements.',
+      evidence: [
+        'Final-year capstone project and report evidence',
+        'Role-based incident and request workflows',
+        'Audit history and lifecycle state tracking',
+        'Testing, requirements and implementation documentation'
+      ],
+      learning: 'Incident-response tooling is credible only when ownership, state, escalation and evidence remain clear from intake to closure.',
+      next: 'Complete the final capstone evaluation and preserve the production-readiness evidence alongside the academic report.',
+      repo: 'https://github.com/cyr6x/ccorp-sirts'
+    },
+    ctech: {
+      title: 'C TECH Inventory Management System — Coursework Build',
+      lede: 'A general software-development coursework project covering inventory, orders, suppliers, users and reporting. It is included as evidence of systems delivery, not as a cybersecurity solution.',
+      role: 'Coursework build demonstrating end-to-end application thinking, data handling, testing and documentation.',
+      method: 'Connected interface, application logic and persistent data into operational workflows for stock, suppliers, orders, users and reports.',
+      evidence: [
+        'Inventory and supplier workflows',
+        'Order and reporting functions',
+        'User administration and audit records',
+        'Coursework architecture, testing and documentation'
+      ],
+      learning: 'The value here is systems thinking and delivery discipline rather than a security claim.',
+      next: 'Keep it as supporting coursework evidence while security projects remain the centre of the portfolio.',
+      repo: 'https://github.com/cyr6x/CTECH-IMS'
+    }
+  };
+
+  const dialog = document.querySelector('#case-dialog');
+  const dialogBody = document.querySelector('#dialog-body');
+
+  function renderCorrectedCase(key) {
+    const data = correctedCases[key];
+    if (!data || !dialog || !dialogBody) return false;
+
+    dialogBody.innerHTML =
+      '<h2>' + data.title + '</h2>' +
+      '<p class="dialog-lede">' + data.lede + '</p>' +
+      '<div class="dialog-grid">' +
+        '<section class="dialog-block"><h3>My position</h3><p>' + data.role + '</p></section>' +
+        '<section class="dialog-block"><h3>Method</h3><p>' + data.method + '</p></section>' +
+        '<section class="dialog-block"><h3>Evidence</h3><ul>' +
+          data.evidence.map(item => '<li>' + item + '</li>').join('') +
+        '</ul></section>' +
+        '<section class="dialog-block"><h3>What changed in my thinking</h3><p>' + data.learning + '</p></section>' +
+        '<section class="dialog-block"><h3>Next move</h3><p>' + data.next + '</p></section>' +
+      '</div>' +
+      '<div class="dialog-repo"><a class="pill" href="' + data.repo + '" target="_blank" rel="noreferrer noopener">Inspect repository ↗</a></div>';
+
+    dialog.showModal();
+    return true;
+  }
+
+  document.addEventListener('click', event => {
+    if (!(event.target instanceof Element)) return;
+    const trigger = event.target.closest('[data-case] .case-open, .lab-row[data-case]');
+    if (!trigger) return;
+    const owner = trigger.closest('[data-case]');
+    const key = owner && owner.dataset.case;
+    if (!correctedCases[key]) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    renderCorrectedCase(key);
+  }, true);
+
+  const contacts = {
+    email: {
+      value: 'baaycyril@gmail.com',
+      href: 'mailto:baaycyril@gmail.com'
+    },
+    phone: {
+      value: '+254 795 794 573',
+      href: 'tel:+254795794573'
+    }
+  };
+
+  document.querySelectorAll('.contact-reveal').forEach(button => {
+    button.addEventListener('click', () => {
+      const item = contacts[button.dataset.contact];
+      if (!item) return;
+
+      const value = button.querySelector('.contact-value');
+      const revealed = button.getAttribute('aria-expanded') === 'true';
+
+      if (!revealed) {
+        button.setAttribute('aria-expanded', 'true');
+        button.classList.add('is-revealed');
+        if (value) value.textContent = item.value;
+        button.title = 'Click again to open';
+        return;
+      }
+
+      window.location.href = item.href;
+    });
+  });
+
+  const projectsLink = document.querySelector('#nav-links a[href="#work"]');
+  const projectSections = ['work', 'investigations', 'archive']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+
+  let navFrame = 0;
+  function refineNavState() {
+    navFrame = 0;
+    if (!projectsLink || !projectSections.length) return;
+
+    const inProjects = projectSections.some(section => {
+      const rect = section.getBoundingClientRect();
+      return rect.top <= innerHeight * 0.48 && rect.bottom >= innerHeight * 0.35;
+    });
+
+    if (inProjects) {
+      document.querySelectorAll('#nav-links a').forEach(link => link.classList.remove('active'));
+      projectsLink.classList.add('active');
+    }
+  }
+
+  addEventListener('scroll', () => {
+    if (!navFrame) navFrame = requestAnimationFrame(refineNavState);
+  }, {passive:true});
+  addEventListener('resize', () => {
+    if (!navFrame) navFrame = requestAnimationFrame(refineNavState);
+  }, {passive:true});
+  refineNavState();
+
+  const canvas = document.querySelector('#contact-galaxy');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d', {alpha:true});
+  if (!ctx) return;
+
+  let width = 1;
+  let height = 1;
+  let ratio = 1;
+  let stars = [];
+  let spherePoints = [];
+  let frame = 0;
+  let running = !reduced;
+  let mouseX = 0;
+  let mouseY = 0;
+
+  function makeSphere(count) {
+    const pts = [];
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < count; i++) {
+      const y = 1 - (i / Math.max(1, count - 1)) * 2;
+      const radius = Math.sqrt(Math.max(0, 1 - y * y));
+      const theta = golden * i;
+      pts.push({
+        x: Math.cos(theta) * radius,
+        y,
+        z: Math.sin(theta) * radius,
+        hot: i % 31 === 0
+      });
+    }
+    return pts;
+  }
+
+  function size() {
+    const rect = canvas.getBoundingClientRect();
+    ratio = Math.min(devicePixelRatio || 1, 2);
+    width = Math.max(1, rect.width);
+    height = Math.max(1, rect.height);
+    canvas.width = Math.floor(width * ratio);
+    canvas.height = Math.floor(height * ratio);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    const starCount = Math.max(80, Math.min(220, Math.floor(width * height / 6500)));
+    stars = Array.from({length:starCount}, (_, i) => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      r: i % 23 === 0 ? 1.5 : Math.random() * 0.8 + 0.25,
+      a: Math.random() * 0.46 + 0.08,
+      p: Math.random() * Math.PI * 2
+    }));
+    spherePoints = makeSphere(Math.max(190, Math.min(390, Math.floor(width / 3))));
+  }
+
+  function draw(time = 0) {
+    ctx.clearRect(0, 0, width, height);
+
+    stars.forEach(star => {
+      const pulse = reduced ? 1 : 0.72 + Math.sin(time * 0.00055 + star.p) * 0.28;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(210,220,232,' + (star.a * pulse) + ')';
+      ctx.fill();
+    });
+
+    const cx = width * 0.5 + mouseX * 12;
+    const cy = height * 0.47 + mouseY * 8;
+    const radius = Math.min(width, height) * (width < 700 ? 0.34 : 0.31);
+    const rot = reduced ? 0.45 : time * 0.00007;
+
+    const glow = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius * 1.28);
+    glow.addColorStop(0, 'rgba(255,48,56,.06)');
+    glow.addColorStop(0.58, 'rgba(255,48,56,.018)');
+    glow.addColorStop(1, 'rgba(255,48,56,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.18);
+
+    for (let ring = 0; ring < 3; ring++) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius * (1.05 + ring * 0.2), radius * (0.28 + ring * 0.055), 0, 0, Math.PI * 2);
+      ctx.strokeStyle = ring === 0 ? 'rgba(255,48,56,.17)' : 'rgba(211,219,230,.08)';
+      ctx.lineWidth = ring === 0 ? 1.1 : 0.7;
+      ctx.setLineDash(ring === 1 ? [5, 12] : []);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.setLineDash([]);
+
+    spherePoints.forEach((point, index) => {
+      const cos = Math.cos(rot);
+      const sin = Math.sin(rot);
+      const rx = point.x * cos - point.z * sin;
+      const rz = point.x * sin + point.z * cos;
+      const perspective = 0.66 + (rz + 1) * 0.17;
+      const x = cx + rx * radius * perspective;
+      const y = cy + point.y * radius * 0.92 * perspective;
+      const alpha = 0.13 + (rz + 1) * 0.16;
+      const dot = point.hot ? 1.8 : 0.55 + (rz + 1) * 0.34;
+
+      ctx.beginPath();
+      ctx.arc(x, y, dot, 0, Math.PI * 2);
+      ctx.fillStyle = point.hot
+        ? 'rgba(255,48,56,' + Math.min(0.8, alpha + 0.35) + ')'
+        : 'rgba(218,226,236,' + alpha + ')';
+      ctx.fill();
+
+      if (index % 47 === 0 && rz > -0.15) {
+        ctx.beginPath();
+        ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,48,56,.13)';
+        ctx.stroke();
+      }
+    });
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(225,232,240,.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if (running) frame = requestAnimationFrame(draw);
+  }
+
+  canvas.addEventListener('pointermove', event => {
+    if (reduced) return;
+    const rect = canvas.getBoundingClientRect();
+    mouseX = ((event.clientX - rect.left) / rect.width - 0.5);
+    mouseY = ((event.clientY - rect.top) / rect.height - 0.5);
+  }, {passive:true});
+
+  canvas.addEventListener('pointerleave', () => {
+    mouseX = 0;
+    mouseY = 0;
+  });
+
+  const observer = new IntersectionObserver(entries => {
+    const visible = entries.some(entry => entry.isIntersecting);
+    if (reduced) {
+      running = false;
+      draw(0);
+      return;
+    }
+    if (visible && !running) {
+      running = true;
+      frame = requestAnimationFrame(draw);
+    } else if (!visible && running) {
+      running = false;
+      cancelAnimationFrame(frame);
+    }
+  }, {threshold:0.05});
+
+  size();
+  if (reduced) draw(0);
+  else frame = requestAnimationFrame(draw);
+  observer.observe(canvas);
+
+  addEventListener('resize', () => {
+    size();
+    if (!running) draw(0);
+  }, {passive:true});
+})();
