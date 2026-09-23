@@ -1305,6 +1305,8 @@ button:focus-visible,
 img{max-width:100%}
 
 /* The entrance remains intentionally dark in both site themes: access begins inside a gravity well. */
+html.root-booting,
+html.root-booting body{overflow:hidden}
 .root-loader{
   overflow:hidden;
   isolation:isolate;
