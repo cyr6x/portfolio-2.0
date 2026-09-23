@@ -1,0 +1,138 @@
+name: Orbit Modal Smoke
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          node --check app.js
+          node --check refine.js
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.55.0
+      - name: Locate Chrome
+        run: |
+          CHROME=$(which google-chrome || which chromium || which chromium-browser)
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 >/tmp/portfolio.log 2>&1 &
+          sleep 2
+      - name: Browser smoke
+        run: |
+          cat > smoke.mjs <<'NODE'
+          import { chromium } from 'playwright-core';
+          import fs from 'node:fs';
+
+          const out={passes:[],failures:[],runtimeErrors:[]};
+          const check=(name,ok,detail='')=>{
+            (ok?out.passes:out.failures).push({name,detail});
+            if(!ok) process.exitCode=1;
+          };
+          const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox']});
+          const ctx=await browser.newContext({viewport:{width:1440,height:1000},colorScheme:'dark'});
+          const page=await ctx.newPage();
+          page.on('pageerror',e=>out.runtimeErrors.push('page:'+e.message));
+          page.on('console',m=>{if(m.type()==='error'&&!/favicon|font/i.test(m.text()))out.runtimeErrors.push('console:'+m.text())});
+          await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await page.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await page.reload({waitUntil:'networkidle'});
+
+          await page.locator('.about-note').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(250);
+          const titleBox=await page.locator('.about-note h1').boundingBox();
+          const bodyBox=await page.locator('.about-body').boundingBox();
+          check('about title and copy do not collide',Boolean(titleBox&&bodyBox&&titleBox.x+titleBox.width+24<bodyBox.x),JSON.stringify({titleBox,bodyBox}));
+          check('about title stays two intentional lines',await page.locator('.about-note h1').evaluate(e=>getComputedStyle(e).whiteSpace==='nowrap'));
+          await page.screenshot({path:'about-spacing.png',fullPage:false});
+
+          await page.locator('#identity').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(250);
+          const moon=page.locator('.planet').first();
+          const m1=await moon.evaluate(e=>({x:getComputedStyle(e).getPropertyValue('--moon-x'),y:getComputedStyle(e).getPropertyValue('--moon-y')}));
+          await page.waitForTimeout(800);
+          const m2=await moon.evaluate(e=>({x:getComputedStyle(e).getPropertyValue('--moon-x'),y:getComputedStyle(e).getPropertyValue('--moon-y')}));
+          check('security moons orbit',m1.x!==m2.x||m1.y!==m2.y,JSON.stringify({m1,m2}));
+          const mb=await moon.boundingBox();
+          if(mb){
+            await page.mouse.move(mb.x+mb.width/2+90,mb.y+mb.height/2);
+            await page.waitForTimeout(180);
+            check('nearby cursor pulls moon out of orbit',await moon.evaluate(e=>e.classList.contains('moon-pulled')));
+          }
+
+          await page.locator('#archive').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(250);
+          await page.locator('.lab-row[data-case]').nth(1).click();
+          await page.waitForTimeout(250);
+          check('case dialog opens',await page.locator('#case-dialog').evaluate(e=>e.open));
+          const dialogMetrics=await page.locator('#dialog-body').evaluate(e=>({client:e.clientHeight,scroll:e.scrollHeight,overflow:getComputedStyle(e).overflowY}));
+          check('case body has usable vertical scrolling',dialogMetrics.scroll<=dialogMetrics.client+2||dialogMetrics.overflow==='auto',JSON.stringify(dialogMetrics));
+          if(dialogMetrics.scroll>dialogMetrics.client+2){
+            await page.locator('#dialog-body').evaluate(e=>e.scrollTop=e.scrollHeight);
+            await page.waitForTimeout(100);
+            const atBottom=await page.locator('#dialog-body').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-4);
+            check('case content reaches true bottom',atBottom,JSON.stringify(dialogMetrics));
+          }
+          check('dialog repository action remains reachable',await page.locator('.dialog-repo').isVisible().catch(()=>false));
+          await page.screenshot({path:'case-dialog-full.png',fullPage:false});
+          await page.keyboard.press('Escape');
+
+          await page.locator('#contact').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(300);
+          const contact=page.locator('.contact-side .pill').first();
+          const c1=await contact.evaluate(e=>({x:getComputedStyle(e).getPropertyValue('--contact-orbit-x'),y:getComputedStyle(e).getPropertyValue('--contact-orbit-y')}));
+          await page.waitForTimeout(900);
+          const c2=await contact.evaluate(e=>({x:getComputedStyle(e).getPropertyValue('--contact-orbit-x'),y:getComputedStyle(e).getPropertyValue('--contact-orbit-y')}));
+          check('contact controls orbit CTA planet',c1.x!==c2.x||c1.y!==c2.y,JSON.stringify({c1,c2}));
+          check('contact controls remain clickable',await contact.evaluate(e=>getComputedStyle(e).pointerEvents!=='none'));
+          await page.screenshot({path:'contact-orbit.png',fullPage:false});
+
+          await page.locator('#theme-toggle').click();
+          await page.waitForTimeout(650);
+          check('light mode survives orbit changes',await page.evaluate(()=>document.documentElement.dataset.theme==='light'));
+          check('light mode no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          await page.screenshot({path:'light-orbit.png',fullPage:false});
+
+          const mobile=await browser.newPage({viewport:{width:390,height:844},colorScheme:'dark'});
+          mobile.on('pageerror',e=>out.runtimeErrors.push('mobile:'+e.message));
+          await mobile.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await mobile.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await mobile.reload({waitUntil:'networkidle'});
+          check('mobile no horizontal overflow',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          await mobile.locator('#archive').scrollIntoViewIfNeeded();
+          await mobile.locator('.lab-row[data-case]').first().click();
+          await mobile.waitForTimeout(180);
+          const mobileDialog=await mobile.locator('#dialog-body').evaluate(e=>({client:e.clientHeight,scroll:e.scrollHeight,overflow:getComputedStyle(e).overflowY}));
+          check('mobile dialog scrolls',mobileDialog.scroll<=mobileDialog.client+2||mobileDialog.overflow==='auto',JSON.stringify(mobileDialog));
+          await mobile.screenshot({path:'mobile-dialog.png',fullPage:false});
+
+          check('no runtime errors',out.runtimeErrors.length===0,out.runtimeErrors.join('\n'));
+          fs.writeFileSync('orbit-modal-results.json',JSON.stringify(out,null,2));
+          await browser.close();
+          if(out.failures.length||out.runtimeErrors.length) process.exit(1);
+          NODE
+          node smoke.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-modal-evidence
+          path: |
+            orbit-modal-results.json
+            about-spacing.png
+            case-dialog-full.png
+            contact-orbit.png
+            light-orbit.png
+            mobile-dialog.png
