@@ -29,6 +29,28 @@ jobs:
           persist-credentials: false
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - name: Validate static site
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check refine.js
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          ids = re.findall(r'\bid="([^"]+)"', html)
+          assert len(ids) == len(set(ids)), "duplicate HTML ids"
+          targets = set(ids)
+          for href in re.findall(r'href="#([^"]+)"', html):
+              assert href in targets, f"broken hash target: #{href}"
+          required = ['id="cosmos"', 'id="theme-toggle"', 'slice-d', 'id="contact-galaxy"']
+          for item in required:
+              assert item in html, f"missing required UI hook: {item}"
+          assert "connect-src 'none'" in html, "CSP connect-src regression"
+          assert "<script>" not in html, "inline script violates CSP"
+          print("Static validation passed")
+          PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
