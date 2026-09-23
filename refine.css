@@ -1003,3 +1003,9 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
   .gravity-link{translate:0 0!important;scale:1!important}
   .degree-line:hover{translate:0}
 }
+
+
+/* Keep orbital contact nodes absolute after the global magnetic interaction class is applied. */
+@media(min-width:821px){
+  .contact-side .pill.gravity-link{position:absolute!important}
+}
