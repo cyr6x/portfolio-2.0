@@ -333,8 +333,9 @@
   function finishRootBoot() {
     if (!rootLoader || rootLoader.classList.contains('is-leaving')) return;
     rootLoader.classList.add('is-leaving');
+    root.classList.remove('root-booting');
     try { sessionStorage.setItem('portfolio-root-booted','1'); } catch (_) {}
-    setTimeout(() => { root.dataset.booted = 'true'; }, 420);
+    setTimeout(() => { root.dataset.booted = 'true'; }, 460);
   }
 
   let alreadyBooted = false;
@@ -342,9 +343,10 @@
   if (alreadyBooted || reduced) {
     root.dataset.booted = 'true';
   } else if (rootLoader) {
-    const bootStates = ['mounting evidence graph','mapping security nodes','warming orbital renderer','opening /root'];
+    root.classList.add('root-booting');
+    const bootStates = ['acquiring event horizon','mapping identity signature','authorising /root','opening portfolio orbit'];
     const started = performance.now();
-    const duration = 700;
+    const duration = 1150;
     const tickBoot = now => {
       const p = Math.min(1,(now-started)/duration);
       const eased = 1 - Math.pow(1-p,3);
@@ -353,7 +355,7 @@
       if (rootLoaderPercent) rootLoaderPercent.textContent = percent + '%';
       if (rootLoaderState) rootLoaderState.textContent = bootStates[Math.min(bootStates.length-1,Math.floor(eased*bootStates.length))];
       if (p < 1) requestAnimationFrame(tickBoot);
-      else setTimeout(finishRootBoot,110);
+      else setTimeout(finishRootBoot,180);
     };
     requestAnimationFrame(tickBoot);
     rootLoaderSkip?.addEventListener('click', finishRootBoot);
@@ -367,7 +369,14 @@
 
   function setTheme(theme, persist = false) {
     const next = theme === 'light' ? 'light' : 'dark';
+    if (persist) {
+      root.classList.add('theme-switching');
+      setTimeout(() => root.classList.remove('theme-switching'), 560);
+    }
     root.dataset.theme = next;
+    root.style.colorScheme = next;
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', next === 'light' ? '#edf3f7' : '#050608');
     if (themeToggle) {
       themeToggle.setAttribute('aria-pressed', String(next === 'light'));
       themeToggle.setAttribute('aria-label', next === 'light' ? 'Switch to dark cosmos' : 'Switch to light cosmos');
@@ -379,8 +388,9 @@
     dispatchEvent(new CustomEvent('cosmic-theme-change', {detail:{theme:next}}));
   }
 
-  let storedTheme = 'dark';
-  try { storedTheme = localStorage.getItem('cosmic-theme') || 'dark'; } catch (_) {}
+  const systemTheme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  let storedTheme = systemTheme;
+  try { storedTheme = localStorage.getItem('cosmic-theme') || systemTheme; } catch (_) {}
   setTheme(storedTheme);
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
