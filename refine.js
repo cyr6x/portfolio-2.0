@@ -96,12 +96,14 @@
 
   const contacts = {
     email: {
-      value: 'baayacyril@gmail.com · baayacyril@outlook.com',
-      href: 'mailto:baayacyril@gmail.com'
+      values: ['baayacyril@gmail.com', 'baayacyril@outlook.com'],
+      href: 'mailto:baayacyril@gmail.com',
+      openLabel: 'Click again to open primary email'
     },
     phone: {
-      value: '+254 795 794 573',
-      href: 'tel:+254795794573'
+      values: ['+256 706 222 076', '+254 795 794 573'],
+      href: 'tel:+256706222076',
+      openLabel: 'Click again to call primary number'
     }
   };
 
@@ -116,8 +118,18 @@
       if (!revealed) {
         button.setAttribute('aria-expanded', 'true');
         button.classList.add('is-revealed');
-        if (value) value.textContent = item.value;
-        button.title = 'Click again to open';
+        if (value) {
+          value.textContent = '';
+          const stack = document.createElement('span');
+          stack.className = 'contact-value-stack';
+          item.values.forEach(entry => {
+            const line = document.createElement('span');
+            line.textContent = entry;
+            stack.appendChild(line);
+          });
+          value.appendChild(stack);
+        }
+        button.title = item.openLabel;
         return;
       }
 
