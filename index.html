@@ -11,8 +11,8 @@
   <meta property="og:title" content="Cyril Baaya | Cybersecurity & Networking">
   <meta property="og:description" content="Security projects, investigations, labs, coursework and a technical roadmap.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://cyr6x.github.io/">
-  <link rel="canonical" href="https://cyr6x.github.io/">
+  <meta property="og:url" content="https://cyr6x.github.io/portfolio-2.0/">
+  <link rel="canonical" href="https://cyr6x.github.io/portfolio-2.0/">
   <title>Cyril Baaya | Cybersecurity & Networking</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23050608'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23ff3038' stroke-width='3'/%3E%3Cpath d='M16 36c8-13 24-17 35-7' fill='none' stroke='%23d8dce3' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='18' cy='36' r='4' fill='%23ff3038'/%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
@@ -23,6 +23,7 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
+  <canvas id="cosmos" aria-hidden="true"></canvas>
   <canvas id="mesh" aria-hidden="true"></canvas>
   <div class="grain" aria-hidden="true"></div>
   <div class="scroll-progress" id="progress" aria-hidden="true"></div>
@@ -41,6 +42,10 @@
         <li><a href="#contact" data-section="contact">Contact</a></li>
       </ul>
       <div class="nav-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light cosmos" aria-pressed="false">
+          <span class="theme-orbit" aria-hidden="true"><i></i><b></b></span>
+          <span class="theme-label">DARK</span>
+        </button>
         <button class="menu" id="menu" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation">☰</button>
       </div>
     </div>
@@ -65,6 +70,7 @@
             <div class="face-slice slice-a" aria-hidden="true"></div>
             <div class="face-slice slice-b" aria-hidden="true"></div>
             <div class="face-slice slice-c" aria-hidden="true"></div>
+            <div class="face-slice slice-d" aria-hidden="true"></div>
             <div class="scan-swoop" aria-hidden="true"></div>
           </div>
 
