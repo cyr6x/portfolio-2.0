@@ -22,6 +22,15 @@
   <script src="refine.js" defer></script>
 </head>
 <body>
+  <div class="root-loader" id="root-loader" role="status" aria-live="polite">
+    <div class="root-loader-core">
+      <span class="root-loader-kicker">INITIALISING SECURITY NODE</span>
+      <strong>/root</strong>
+      <div class="root-loader-track" aria-hidden="true"><i></i></div>
+      <div class="root-loader-status"><span id="root-loader-state">mounting evidence graph</span><b id="root-loader-percent">0%</b></div>
+      <button class="root-loader-skip" id="root-loader-skip" type="button">ENTER /ROOT</button>
+    </div>
+  </div>
   <a class="skip-link" href="#main">Skip to content</a>
   <canvas id="cosmos" aria-hidden="true"></canvas>
   <canvas id="mesh" aria-hidden="true"></canvas>
@@ -104,6 +113,10 @@
           <b class="ssh-line">EVIDENCE ONLINE</b>
         </div>
 
+        <button class="neural-lock" id="neural-lock" type="button" aria-pressed="false">
+          <span class="neural-lock-dot" aria-hidden="true"></span>
+          <span class="neural-lock-copy"><b>LOCK NEURAL MAP</b><small>freeze the active gravity node</small></span>
+        </button>
         <div class="identity-scroll">Scroll to enter</div>
       </div>
     </section>
