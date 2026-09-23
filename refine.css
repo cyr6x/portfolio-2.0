@@ -557,7 +557,7 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
 .portrait-stage #brain-galaxy{
   transform:scale(var(--brain-zoom));
   transform-origin:50% 42%;
-  filter:brightness(calc(.72 + var(--brain-flare) * .7)) saturate(calc(.7 + var(--brain-flare) * .8));
+  filter:brightness(var(--brain-brightness,.78)) saturate(var(--brain-saturation,.78));
   transition:transform .18s linear,filter .18s linear;
 }
 .face-schematic{
@@ -806,7 +806,7 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
   width:min(58vw,720px);
   aspect-ratio:1;
   border:1px dashed rgba(255,48,56,.18);
-  transform:translate(-50%,-50%) rotate(28deg) scaleY(.46);
+  transform:rotate(28deg) scaleY(.46);
   animation:contact-orbit-counter 31s linear infinite;
 }
 .contact-title{
