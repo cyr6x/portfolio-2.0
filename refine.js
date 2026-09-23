@@ -440,10 +440,10 @@
       const sceneAccents = {
         identity:'255,48,56',
         projects:'255,48,56',
-        investigations:'139,120,255',
-        archive:'96,185,255',
-        arsenal:'117,216,154',
-        roadmap:'242,189,89',
+        investigations:'142,149,160',
+        archive:'110,132,151',
+        arsenal:'119,142,130',
+        roadmap:'156,143,112',
         contact:'255,48,56'
       };
       const palette = () => {
@@ -572,11 +572,6 @@
           }
         });
 
-        if (!reduced) {
-          drawComet(time,.17,1);
-          drawComet(time,.69,-1);
-        }
-        drawJourneyProbe(pal);
         if (running) frame = requestAnimationFrame(drawCosmos);
       };
 
@@ -609,60 +604,29 @@
   const identity = document.querySelector('#identity');
   const planets = portrait ? [...portrait.querySelectorAll('.planet')] : [];
   const core = portrait && portrait.querySelector('.security-core');
-  const neuralLock = document.querySelector('#neural-lock');
-  const neuralLockTitle = neuralLock && neuralLock.querySelector('b');
-  const neuralLockHint = neuralLock && neuralLock.querySelector('small');
   let gravityIndex = 0;
-  let neuralLocked = false;
 
   const setGravityNode = index => {
     gravityIndex = Math.max(0,Math.min(planets.length-1,index));
     planets.forEach((planet,i) => planet.classList.toggle('gravity-active', i === gravityIndex));
   };
 
-  const setNeuralLock = locked => {
-    neuralLocked = Boolean(locked);
-    portrait?.classList.toggle('is-locked',neuralLocked);
-    neuralLock?.setAttribute('aria-pressed',String(neuralLocked));
-    if (neuralLocked) {
-      setGravityNode(gravityIndex);
-      portrait?.classList.add('is-alive');
-      if (core) core.classList.add('neural-flare');
-      if (neuralLockTitle) neuralLockTitle.textContent = 'RELEASE NEURAL MAP';
-      if (neuralLockHint) neuralLockHint.textContent = 'node 0' + (gravityIndex + 1) + ' locked';
-    } else {
-      if (neuralLockTitle) neuralLockTitle.textContent = 'LOCK NEURAL MAP';
-      if (neuralLockHint) neuralLockHint.textContent = 'freeze the active gravity node';
-    }
-  };
-
   if (portrait && planets.length) {
     portrait.addEventListener('pointermove', event => {
-      if (reduced) return;
+      if (reduced || (!portrait.classList.contains('galaxy-mode') && !portrait.classList.contains('phase-planets'))) return;
       const rect = portrait.getBoundingClientRect();
       const nx = (event.clientX - rect.left) / rect.width - .5;
       const ny = (event.clientY - rect.top) / rect.height - .5;
       const index = ny < 0 ? (nx < 0 ? 0 : 1) : (nx < 0 ? 2 : 3);
-      if (!neuralLocked) setGravityNode(index);
+      setGravityNode(index);
       if (core) core.classList.add('neural-flare');
     }, {passive:true});
 
     portrait.addEventListener('pointerleave', () => {
-      if (neuralLocked) {
-        setGravityNode(gravityIndex);
-        portrait.classList.add('is-alive');
-        if (core) core.classList.add('neural-flare');
-        return;
-      }
       planets.forEach(planet => planet.classList.remove('gravity-active'));
       if (core) core.classList.remove('neural-flare');
     });
   }
-
-  neuralLock?.addEventListener('click', () => setNeuralLock(!neuralLocked));
-  addEventListener('keydown', event => {
-    if (event.key === 'Escape' && neuralLocked) setNeuralLock(false);
-  });
 
   let phaseFrame = 0;
   function updateIdentityPhases() {
@@ -738,68 +702,30 @@
     }, {passive:true});
   });
 
-  /* Magnetic event-horizon interaction for clickable words. */
-  const finePointer = matchMedia('(pointer:fine)').matches;
-  if (finePointer && !reduced) {
-    const targets = [...document.querySelectorAll(
-      '#nav-links a,.pill,.case-open,.repo-link,.lab-row,.footer-links a,.theme-toggle,.neural-lock'
-    )];
-    targets.forEach(target => {
-      target.classList.add('gravity-link');
-      if (!target.querySelector(':scope > .event-horizon')) {
-        const horizon = document.createElement('span');
-        horizon.className = 'event-horizon';
-        horizon.setAttribute('aria-hidden','true');
-        target.appendChild(horizon);
-      }
-    });
-
-    let px = -9999, py = -9999, magnetFrame = 0;
-    function magnetise() {
-      magnetFrame = 0;
-      targets.forEach(target => {
-        const rect = target.getBoundingClientRect();
-        const cx = rect.left + rect.width/2;
-        const cy = rect.top + rect.height/2;
-        const dx = px - cx;
-        const dy = py - cy;
-        const dist = Math.hypot(dx,dy);
-        const radius = Math.max(115, Math.min(170, rect.width * .85 + 70));
-        const intensity = Math.max(0, 1 - dist / radius);
-
-        if (intensity <= 0) {
-          target.classList.remove('is-gravity');
-          target.style.setProperty('--grav-x','0px');
-          target.style.setProperty('--grav-y','0px');
-          target.style.setProperty('--grav-scale','1');
-          target.style.setProperty('--horizon-alpha','0');
-          return;
-        }
-
-        const pull = intensity * intensity;
-        target.classList.add('is-gravity');
-        target.style.setProperty('--grav-x',(dx * .075 * pull).toFixed(2) + 'px');
-        target.style.setProperty('--grav-y',(dy * .075 * pull).toFixed(2) + 'px');
-        target.style.setProperty('--grav-scale',String(1 + pull * .026));
-        target.style.setProperty('--horizon-alpha',String(.18 + pull * .55));
-        target.style.setProperty('--horizon-scale',String(.5 + pull * 1.15));
-        target.style.setProperty('--horizon-x',Math.max(0,Math.min(100,((px-rect.left)/Math.max(1,rect.width))*100)) + '%');
-        target.style.setProperty('--horizon-y',Math.max(0,Math.min(100,((py-rect.top)/Math.max(1,rect.height))*100)) + '%');
-      });
-    }
-
-    addEventListener('pointermove', event => {
-      px = event.clientX;
-      py = event.clientY;
-      if (!magnetFrame) magnetFrame = requestAnimationFrame(magnetise);
-    }, {passive:true});
-    addEventListener('pointerleave', () => {
-      px = py = -9999;
-      if (!magnetFrame) magnetFrame = requestAnimationFrame(magnetise);
-    });
-  }
+  /* Keep interactive controls classed consistently, without cursor-warp theatrics. */
+  document.querySelectorAll(
+    '#nav-links a,.pill,.case-open,.repo-link,.lab-row,.footer-links a,.theme-toggle'
+  ).forEach(target => target.classList.add('gravity-link'));
 })();
 
+
+
+/* Minimal site traversal indicator: a single comet along the header edge. */
+(() => {
+  const progress = document.querySelector('#traverse-progress');
+  if (!progress) return;
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+    const value = Math.max(0,Math.min(1,scrollY / max));
+    progress.style.setProperty('--site-progress',String(value));
+  };
+  const queue = () => { if (!frame) frame = requestAnimationFrame(update); };
+  addEventListener('scroll',queue,{passive:true});
+  addEventListener('resize',queue,{passive:true});
+  update();
+})();
 
 /* Orbital controls: moons around SECURITY + recruiter-safe contact orbit. */
 (() => {
@@ -839,11 +765,19 @@
 
   function drawMoons(dt) {
     if (!desktopQuery.matches || !portrait || !planetSystem || !moons.length) return;
+    if (!portrait.classList.contains('galaxy-mode') && !portrait.classList.contains('phase-planets')) {
+      moons.forEach(node => {
+        node.classList.remove('moon-pulled');
+        node.style.setProperty('--moon-pull-x','0px');
+        node.style.setProperty('--moon-pull-y','0px');
+      });
+      return;
+    }
     const rect = planetSystem.getBoundingClientRect();
     const rx = Math.min(rect.width * .34, 345);
     const ry = Math.min(rect.height * .27, 205);
     const hovered = moons.some(node => node.matches(':hover,:focus-visible'));
-    if (!reduced && !hovered) securityClock += dt * .000105;
+    if (!reduced && !hovered) securityClock += dt * .000055;
 
     moons.forEach((node, index) => {
       const angle = phases[index % phases.length] + securityClock;
@@ -871,7 +805,7 @@
     const rx = Math.min(rect.width * .355, 420);
     const ry = Math.min(rect.height * .31, 230);
     const held = contactNodes.find(node => node.matches(':hover,:focus-visible'));
-    if (!reduced && !held) contactClock += dt * .000075;
+    if (!reduced && !held) contactClock += dt * .000042;
 
     contactNodes.forEach((node,index) => {
       const angle = contactPhases[index % contactPhases.length] + contactClock;
