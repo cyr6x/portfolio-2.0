@@ -137,7 +137,7 @@ function updatePage(){
   sections.forEach(section=>{
     if(section.getBoundingClientRect().top<=innerHeight*.42)active=section.id;
   });
-  $('#nav-links a').forEach(link=>link.classList.toggle('active',link.dataset.section===active||(active==='identity'&&link.dataset.section==='about')));
+  document.querySelectorAll('#nav-links a').forEach(link=>link.classList.toggle('active',link.dataset.section===active||(active==='identity'&&link.dataset.section==='about')));
   const visibleSections=['identity','about','work','investigations','archive','arsenal','roadmap','contact'];
   const sectionPosition=Math.max(0,visibleSections.indexOf(active));
   positionIndex.textContent=String(sectionPosition+1).padStart(2,'0');
