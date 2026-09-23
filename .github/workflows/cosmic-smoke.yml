@@ -59,6 +59,7 @@ jobs:
           pass('hover selects gravity planet',await desktop.locator('.planet.gravity-active').count()===1);
           pass('schematic layer installed',await desktop.locator('.face-schematic').count()===1);
           pass('four portrait slices installed',await desktop.locator('.face-slice').count()===4);
+          await desktop.screenshot({path:'hero-hover.png',fullPage:false});
 
           await desktop.locator('#theme-toggle').click();
           await desktop.waitForTimeout(250);
@@ -81,6 +82,7 @@ jobs:
           await desktop.waitForTimeout(500);
           pass('contact CTA is orbital core',await desktop.locator('.contact-title').evaluate(e=>getComputedStyle(e).position==='absolute'&&getComputedStyle(e).borderRadius==='50%'));
           pass('contact nodes orbit on desktop',await desktop.locator('.contact-side .pill').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).position==='absolute')));
+          results.contactNodes=await desktop.locator('.contact-side .pill').evaluateAll(nodes=>nodes.map(n=>({text:n.innerText.replace(/\s+/g,' ').trim(),top:getComputedStyle(n).top,left:getComputedStyle(n).left,right:getComputedStyle(n).right,bottom:getComputedStyle(n).bottom,x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y})));
           await desktop.screenshot({path:'desktop-contact.png',fullPage:false});
 
           await desktop.evaluate(()=>scrollTo(0,0));
@@ -115,5 +117,6 @@ jobs:
           name: cosmic-smoke-evidence
           path: |
             smoke-results.json
+            hero-hover.png
             desktop-contact.png
             mobile-contact.png
