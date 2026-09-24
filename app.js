@@ -185,12 +185,12 @@ function drawMesh(time=0){
   meshEdges.forEach(edge=>{
     const a=positions[edge.a],b=positions[edge.b],distance=Math.hypot(a.x-b.x,a.y-b.y),pulse=.5+Math.sin(time*.0008+edge.phase*6.28)*.5;
     meshContext.beginPath();meshContext.moveTo(a.x,a.y);meshContext.lineTo(b.x,b.y);
-    meshContext.strokeStyle=edge.hot?`rgba(255,48,56,${.14*pulse*(1-distance/200)})`:`rgba(180,190,204,${.1*pulse*(1-distance/200)})`;
+    meshContext.strokeStyle=edge.hot?`rgba(96,185,255,${.14*pulse*(1-distance/200)})`:`rgba(180,190,204,${.1*pulse*(1-distance/200)})`;
     meshContext.lineWidth=edge.hot?1:.55;meshContext.stroke();
   });
   meshNodes.forEach((node,index)=>{
     if(!reduced){node.x+=node.vx;node.y+=node.vy;if(node.x<-15||node.x>width+15)node.vx*=-1;if(node.y<-15||node.y>height+15)node.vy*=-1}
-    meshContext.beginPath();meshContext.arc(positions[index].x,positions[index].y,node.hot?1.8:.7,0,Math.PI*2);meshContext.fillStyle=node.hot?'rgba(255,48,56,.72)':'rgba(205,212,222,.32)';meshContext.fill();
+    meshContext.beginPath();meshContext.arc(positions[index].x,positions[index].y,node.hot?1.8:.7,0,Math.PI*2);meshContext.fillStyle=node.hot?'rgba(96,185,255,.72)':'rgba(205,212,222,.32)';meshContext.fill();
   });
   if(!reduced)meshFrame=requestAnimationFrame(drawMesh);
 }
@@ -216,7 +216,7 @@ function drawBrainGalaxy(time=0){
   galaxyContext.save();galaxyContext.translate(centerX,centerY);galaxyContext.rotate(time*.000035);galaxyContext.scale(1,.46);
   for(let ring=0;ring<4;ring++){galaxyContext.beginPath();galaxyContext.ellipse(0,0,box.width*(.16+ring*.09),box.width*(.16+ring*.09),0,0,Math.PI*2);galaxyContext.strokeStyle=`rgba(190,201,216,${.13-ring*.018})`;galaxyContext.setLineDash(ring%2?[5,9]:[]);galaxyContext.stroke()}
   galaxyContext.restore();galaxyContext.setLineDash([]);
-  galaxyPoints.forEach((point,index)=>{const breathe=Math.sin(time*.001+point.phase)*3;galaxyContext.beginPath();galaxyContext.arc(point.x+breathe,point.y+breathe*.4,point.r,0,Math.PI*2);galaxyContext.fillStyle=point.hot?'rgba(255,48,56,.85)':'rgba(210,220,232,.42)';galaxyContext.fill();if(index%23===0){const next=galaxyPoints[(index+7)%galaxyPoints.length];galaxyContext.beginPath();galaxyContext.moveTo(point.x,point.y);galaxyContext.lineTo(next.x,next.y);galaxyContext.strokeStyle='rgba(190,201,216,.08)';galaxyContext.stroke()}});
+  galaxyPoints.forEach((point,index)=>{const breathe=Math.sin(time*.001+point.phase)*3;galaxyContext.beginPath();galaxyContext.arc(point.x+breathe,point.y+breathe*.4,point.r,0,Math.PI*2);galaxyContext.fillStyle=point.hot?'rgba(96,185,255,.85)':'rgba(210,220,232,.42)';galaxyContext.fill();if(index%23===0){const next=galaxyPoints[(index+7)%galaxyPoints.length];galaxyContext.beginPath();galaxyContext.moveTo(point.x,point.y);galaxyContext.lineTo(next.x,next.y);galaxyContext.strokeStyle='rgba(190,201,216,.08)';galaxyContext.stroke()}});
   if(!reduced)galaxyFrame=requestAnimationFrame(drawBrainGalaxy);
 }
 sizeBrainGalaxy();drawBrainGalaxy();
