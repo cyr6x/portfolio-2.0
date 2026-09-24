@@ -41,9 +41,9 @@ jobs:
 
           html = Path("index.html").read_text(encoding="utf-8")
           scripts = [Path("app.js").read_text(encoding="utf-8"), Path("refine.js").read_text(encoding="utf-8")]
-          hero = Path("assets/cyril-hero-live.webp")
+          hero = Path("assets/dp4-ultimate-hero-hires.webp")
 
-          assert hero.exists() and 9000 < hero.stat().st_size < 50000, "hero asset integrity failed"
+          assert hero.exists() and 200000 < hero.stat().st_size < 300000, "hero asset integrity failed"
 
           ids = re.findall(r'\bid="([^"]+)"', html)
           assert len(ids) == len(set(ids)), "duplicate HTML ids"
