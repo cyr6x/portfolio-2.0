@@ -215,16 +215,13 @@ jobs:
           await page.locator('#contact').scrollIntoViewIfNeeded();
           await page.waitForTimeout(250);
           const orbitNode=page.locator('.contact-side .pill').first();
-          const orbitStart=await orbitNode.evaluate(e=>[
-            e.style.getPropertyValue('--contact-orbit-x'),
-            e.style.getPropertyValue('--contact-orbit-y')
-          ].join('|'));
+          const orbitStart=await orbitNode.boundingBox();
           await page.waitForTimeout(1200);
-          const orbitEnd=await orbitNode.evaluate(e=>[
-            e.style.getPropertyValue('--contact-orbit-x'),
-            e.style.getPropertyValue('--contact-orbit-y')
-          ].join('|'));
-          check('desktop contact pills orbit',orbitStart!==orbitEnd,orbitStart+' -> '+orbitEnd);
+          const orbitEnd=await orbitNode.boundingBox();
+          const orbitDelta=orbitStart&&orbitEnd
+            ? Math.hypot(orbitEnd.x-orbitStart.x,orbitEnd.y-orbitStart.y)
+            : 0;
+          check('desktop contact pills visibly orbit',orbitDelta>4,orbitDelta.toFixed(2)+'px movement');
           const email=page.locator('[data-contact="email"]');
           const phone=page.locator('[data-contact="phone"]');
           await email.click({force:true});

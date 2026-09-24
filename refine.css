@@ -1875,7 +1875,7 @@ dialog[open]{
   }
 
   /* Contact controls orbit the CTA planet; the existing magnetic hover stays additive via translate. */
-  .contact-side .pill.gravity-link{
+  .contact-side .pill{
     left:50%!important;
     top:50%!important;
     right:auto!important;
@@ -1886,8 +1886,8 @@ dialog[open]{
     animation:none!important;
     will-change:transform,translate,scale;
   }
-  .contact-side .pill.gravity-link:hover,
-  .contact-side .pill.gravity-link:focus-visible{
+  .contact-side .pill:hover,
+  .contact-side .pill:focus-visible{
     transform:
       translate(-50%,-50%)
       translate3d(var(--contact-orbit-x,0px),var(--contact-orbit-y,0px),0)!important;
