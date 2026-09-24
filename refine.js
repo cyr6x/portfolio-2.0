@@ -236,9 +236,9 @@
     const rot = reduced ? 0.45 : time * 0.00007;
 
     const glow = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius * 1.28);
-    glow.addColorStop(0, 'rgba(96,185,255,.06)');
-    glow.addColorStop(0.58, 'rgba(96,185,255,.018)');
-    glow.addColorStop(1, 'rgba(96,185,255,0)');
+    glow.addColorStop(0, 'rgba(47,111,175,.06)');
+    glow.addColorStop(0.58, 'rgba(47,111,175,.018)');
+    glow.addColorStop(1, 'rgba(47,111,175,0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(cx, cy, radius * 1.3, 0, Math.PI * 2);
@@ -251,7 +251,7 @@
     for (let ring = 0; ring < 3; ring++) {
       ctx.beginPath();
       ctx.ellipse(0, 0, radius * (1.05 + ring * 0.2), radius * (0.28 + ring * 0.055), 0, 0, Math.PI * 2);
-      ctx.strokeStyle = ring === 0 ? 'rgba(96,185,255,.17)' : 'rgba(211,219,230,.08)';
+      ctx.strokeStyle = ring === 0 ? 'rgba(47,111,175,.17)' : 'rgba(211,219,230,.08)';
       ctx.lineWidth = ring === 0 ? 1.1 : 0.7;
       ctx.setLineDash(ring === 1 ? [5, 12] : []);
       ctx.stroke();
@@ -273,14 +273,14 @@
       ctx.beginPath();
       ctx.arc(x, y, dot, 0, Math.PI * 2);
       ctx.fillStyle = point.hot
-        ? 'rgba(96,185,255,' + Math.min(0.8, alpha + 0.35) + ')'
+        ? 'rgba(47,111,175,' + Math.min(0.8, alpha + 0.35) + ')'
         : 'rgba(218,226,236,' + alpha + ')';
       ctx.fill();
 
       if (index % 47 === 0 && rz > -0.15) {
         ctx.beginPath();
         ctx.arc(x, y, 5.5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(96,185,255,.13)';
+        ctx.strokeStyle = 'rgba(47,111,175,.13)';
         ctx.stroke();
       }
     });
@@ -450,13 +450,13 @@
       };
 
       const sceneAccents = {
-        identity:'96,185,255',
-        projects:'96,185,255',
+        identity:'47,111,175',
+        projects:'47,111,175',
         investigations:'142,149,160',
         archive:'110,132,151',
         arsenal:'119,142,130',
         roadmap:'156,143,112',
-        contact:'96,185,255'
+        contact:'47,111,175'
       };
       const palette = () => {
         const scene = document.body.dataset.scene || 'identity';
