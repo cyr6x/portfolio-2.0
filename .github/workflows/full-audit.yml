@@ -1,0 +1,308 @@
+name: Full Portfolio Audit
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+
+      - name: Static security and integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check refine.js
+          test -s assets/cyril-hero-live.webp
+          test "$(stat -c%s assets/cyril-hero-live.webp)" -gt 9000
+          test "$(stat -c%s assets/cyril-hero-live.webp)" -lt 50000
+          ! grep -RniE '(ghp_|github_pat_|AIza|sk-[A-Za-z0-9]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|SUPABASE_SERVICE_ROLE|password[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']+)' --exclude-dir=.git --exclude='*.webp' .
+          ! grep -RniE '<script[^>]*>[^<]+' index.html
+          ! grep -RniE 'on(click|load|error|mouseover|mouseenter|submit)=' index.html
+          ! grep -RniE '\beval\s*\(|new Function\s*\(' app.js refine.js
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html=Path("index.html").read_text()
+          ids=re.findall(r'\bid="([^"]+)"',html)
+          assert len(ids)==len(set(ids)), "duplicate HTML ids"
+          ids=set(ids)
+          for target in re.findall(r'href="#([^"]+)"',html):
+              assert target in ids, f"broken hash target #{target}"
+          csp=re.search(r'http-equiv="Content-Security-Policy" content="([^"]+)"',html)
+          assert csp, "missing CSP"
+          policy=csp.group(1)
+          required=[
+              "default-src 'none'",
+              "base-uri 'none'",
+              "object-src 'none'",
+              "script-src 'self'",
+              "connect-src 'none'",
+              "form-action 'none'",
+              "upgrade-insecure-requests"
+          ]
+          for item in required:
+              assert item in policy, f"CSP regression: {item}"
+          assert "<form" not in html.lower(), "unexpected form attack surface"
+          for tag in re.findall(r'<a\b[^>]*target="_blank"[^>]*>',html,re.I):
+              rel=re.search(r'rel="([^"]*)"',tag,re.I)
+              assert rel and {'noopener','noreferrer'} <= set(rel.group(1).lower().split()), f"unsafe target blank: {tag}"
+          for url in re.findall(r'href="(https?://[^"]+)"',html,re.I):
+              assert url.startswith("https://"), f"mixed content URL: {url}"
+          print("Static security/integrity passed")
+          PY
+
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.55.0
+
+      - name: Locate Chrome
+        run: |
+          CHROME=$(which google-chrome || which chromium || which chromium-browser)
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+
+      - name: Start site
+        run: |
+          python3 -m http.server 4173 >/tmp/portfolio.log 2>&1 &
+          sleep 2
+
+      - name: End-to-end UX, functionality and QoS
+        run: |
+          cat > audit.mjs <<'NODE'
+          import { chromium } from 'playwright-core';
+          import fs from 'node:fs';
+
+          const out={passes:[],failures:[],runtimeErrors:[],metrics:{},cases:[]};
+          const check=(name,ok,detail='')=>{
+            (ok?out.passes:out.failures).push({name,detail});
+            if(!ok) process.exitCode=1;
+          };
+          const browser=await chromium.launch({
+            headless:true,
+            executablePath:process.env.CHROME_PATH,
+            args:['--no-sandbox']
+          });
+
+          async function prepare(page){
+            page.on('pageerror',e=>out.runtimeErrors.push('page:'+e.message));
+            page.on('console',m=>{
+              if(m.type()==='error'&&!/favicon|font/i.test(m.text())) out.runtimeErrors.push('console:'+m.text());
+            });
+            const r=await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+            check('HTTP 200',r?.status()===200,String(r?.status()));
+            await page.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+            await page.reload({waitUntil:'networkidle'});
+            await page.evaluate(()=>{document.documentElement.style.scrollBehavior='auto'});
+          }
+
+          const page=await browser.newPage({viewport:{width:1440,height:1000},colorScheme:'dark'});
+          await prepare(page);
+
+          // Hero / identity.
+          const hero=page.locator('.portrait img');
+          check('hero image element present',await hero.count()===1);
+          check('hero image loads',await hero.evaluate(img=>img.complete&&img.naturalWidth>400&&img.naturalHeight>400));
+          check('hero visible in first viewport',await hero.evaluate(img=>{
+            const r=img.getBoundingClientRect(); const s=getComputedStyle(img);
+            return r.width>180&&r.height>180&&r.bottom>0&&r.top<innerHeight&&s.visibility!=='hidden'&&parseFloat(s.opacity)>.1;
+          }));
+          check('hero alt text present',Boolean((await hero.getAttribute('alt'))?.trim()));
+          await page.screenshot({path:'01-hero-dark.png',fullPage:false});
+
+          // Root entry still works on fresh session.
+          const fresh=await browser.newPage({viewport:{width:1440,height:1000},colorScheme:'dark'});
+          fresh.on('pageerror',e=>out.runtimeErrors.push('fresh:'+e.message));
+          await fresh.goto('http://127.0.0.1:4173',{waitUntil:'domcontentloaded'});
+          check('root access shown on fresh session',await fresh.locator('#root-loader').isVisible());
+          check('black-hole visual present',await fresh.locator('.root-blackhole-core').count()===1);
+          await fresh.locator('#root-loader-skip').click();
+          await fresh.waitForTimeout(650);
+          check('root entry dismisses',await fresh.evaluate(()=>document.documentElement.dataset.booted==='true'));
+          await fresh.close();
+
+          // Navigation and layout.
+          const navLinks=page.locator('#nav-links a');
+          check('five primary nav links',await navLinks.count()===5,String(await navLinks.count()));
+          const navTargets=await navLinks.evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+          for(const href of navTargets){
+            const target=page.locator(href);
+            check('nav target exists '+href,await target.count()===1);
+          }
+          check('desktop no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          check('duplicate ids absent',await page.evaluate(()=>{
+            const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);
+            return ids.length===new Set(ids).size;
+          }));
+
+          // About.
+          await page.locator('#about').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(150);
+          check('about content readable',await page.locator('.about-body').evaluate(e=>{
+            const r=e.getBoundingClientRect(),s=getComputedStyle(e);
+            return r.width>300&&parseFloat(s.fontSize)>=14&&parseFloat(s.lineHeight)>=20;
+          }));
+          await page.screenshot({path:'02-about-dark.png',fullPage:false});
+
+          // Projects and project case files.
+          await page.locator('#work').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(250);
+          check('three featured project cards',await page.locator('.case-card').count()===3,String(await page.locator('.case-card').count()));
+          await page.screenshot({path:'03-projects-dark.png',fullPage:false});
+
+          // Every case/lab/report entry should open a usable dialog.
+          const caseTriggers=page.locator('[data-case]');
+          const total=await caseTriggers.count();
+          check('case entries available',total>=10,String(total));
+          const seen=new Set();
+          for(let i=0;i<total;i++){
+            const trigger=caseTriggers.nth(i);
+            const key=await trigger.getAttribute('data-case');
+            if(!key||seen.has(key)) continue;
+            seen.add(key);
+            await trigger.scrollIntoViewIfNeeded();
+            await trigger.click({force:true});
+            await page.waitForTimeout(60);
+            const dialog=page.locator('#case-dialog');
+            const opened=await dialog.evaluate(d=>d.open);
+            const title=(await page.locator('#dialog-body h2').first().textContent().catch(()=>''))?.trim()||'';
+            const bodyText=(await page.locator('#dialog-body').innerText().catch(()=>''))||'';
+            const metrics=await page.locator('#dialog-body').evaluate(e=>({client:e.clientHeight,scroll:e.scrollHeight,overflow:getComputedStyle(e).overflowY}));
+            const scrollable=metrics.scroll<=metrics.client+2||['auto','scroll'].includes(metrics.overflow);
+            out.cases.push({key,title,length:bodyText.length,metrics});
+            check('case opens '+key,opened);
+            check('case has substantive content '+key,title.length>3&&bodyText.length>120,String(bodyText.length));
+            check('case is fully scrollable '+key,scrollable,JSON.stringify(metrics));
+            if(metrics.scroll>metrics.client+2){
+              await page.locator('#dialog-body').evaluate(e=>e.scrollTop=e.scrollHeight);
+              check('case reaches bottom '+key,await page.locator('#dialog-body').evaluate(e=>e.scrollTop+e.clientHeight>=e.scrollHeight-4));
+            }
+            await page.keyboard.press('Escape');
+          }
+
+          // Technical profile.
+          await page.locator('#arsenal').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(120);
+          check('four technical profile cards',await page.locator('.skill-card').count()===4,String(await page.locator('.skill-card').count()));
+          const skills=(await page.locator('#arsenal').innerText()).toLowerCase();
+          check('KQL placed in technical profile',skills.includes('kql'));
+          check('Python present',skills.includes('python'));
+          check('React removed',!skills.includes('react'));
+          check('TypeScript removed',!skills.includes('typescript'));
+
+          // Roadmap.
+          await page.locator('#roadmap').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(120);
+          check('roadmap renders',await page.locator('.degree-line').count()>=3);
+          await page.screenshot({path:'04-roadmap-dark.png',fullPage:false});
+
+          // Contact controls.
+          await page.locator('#contact').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(250);
+          const email=page.locator('[data-contact="email"]');
+          const phone=page.locator('[data-contact="phone"]');
+          await email.click({force:true});
+          await phone.click({force:true});
+          check('both emails reveal',await email.locator('.contact-value-stack span').count()===2);
+          check('both phones reveal',await phone.locator('.contact-value-stack span').count()===2);
+          check('Uganda phone present',(await phone.innerText()).includes('+256 706 222 076'));
+          check('Kenya phone present',(await phone.innerText()).includes('+254 795 794 573'));
+          check('Gmail present',(await email.innerText()).includes('baayacyril@gmail.com'));
+          check('Outlook present',(await email.innerText()).includes('baayacyril@outlook.com'));
+          check('LinkedIn is HTTPS',(await page.locator('a[href*="linkedin.com"]').getAttribute('href'))?.startsWith('https://'));
+          check('GitHub is HTTPS',(await page.locator('a[href*="github.com"]').getAttribute('href'))?.startsWith('https://'));
+          await page.screenshot({path:'05-contact-dark.png',fullPage:false});
+
+          // Theme.
+          await page.locator('#theme-toggle').click();
+          await page.waitForTimeout(650);
+          check('light theme toggles',await page.evaluate(()=>document.documentElement.dataset.theme==='light'));
+          check('light theme persists',await page.evaluate(()=>localStorage.getItem('cosmic-theme')==='light'));
+          check('light no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          await page.screenshot({path:'06-contact-light.png',fullPage:false});
+          await page.locator('#about').scrollIntoViewIfNeeded();
+          await page.screenshot({path:'07-about-light.png',fullPage:false});
+
+          // QoS/performance on local static hosting.
+          const perf=await page.evaluate(()=>{
+            const nav=performance.getEntriesByType('navigation')[0];
+            const resources=performance.getEntriesByType('resource');
+            const byType={};
+            for(const r of resources){
+              const type=r.initiatorType||'other';
+              byType[type]=(byType[type]||0)+(r.transferSize||r.encodedBodySize||0);
+            }
+            const shifts=performance.getEntriesByType('layout-shift').filter(e=>!e.hadRecentInput).reduce((a,e)=>a+e.value,0);
+            return {
+              domContentLoaded:nav?.domContentLoadedEventEnd||0,
+              load:nav?.loadEventEnd||0,
+              resources:resources.length,
+              transferBytes:Object.values(byType).reduce((a,b)=>a+b,0),
+              byType,
+              cls:shifts
+            };
+          });
+          out.metrics.desktop=perf;
+          check('DOMContentLoaded QoS < 1800ms',perf.domContentLoaded<1800,JSON.stringify(perf));
+          check('load QoS < 2800ms',perf.load<2800,JSON.stringify(perf));
+          check('CLS is stable',perf.cls<0.12,String(perf.cls));
+
+          // Touch/mobile.
+          const mobile=await browser.newPage({viewport:{width:390,height:844},colorScheme:'dark'});
+          mobile.on('pageerror',e=>out.runtimeErrors.push('mobile:'+e.message));
+          await mobile.goto('http://127.0.0.1:4173',{waitUntil:'networkidle'});
+          await mobile.evaluate(()=>sessionStorage.setItem('portfolio-root-booted','1'));
+          await mobile.reload({waitUntil:'networkidle'});
+          check('mobile hero loads',await mobile.locator('.portrait img').evaluate(img=>img.complete&&img.naturalWidth>400));
+          check('mobile no horizontal overflow',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          await mobile.locator('#menu').click();
+          check('mobile menu opens',(await mobile.locator('#menu').getAttribute('aria-expanded'))==='true');
+          const mobileLinks=mobile.locator('#nav-links a');
+          check('mobile nav exposes links',await mobileLinks.count()===5);
+          await mobile.locator('#menu').click();
+          await mobile.locator('#archive').scrollIntoViewIfNeeded();
+          await mobile.locator('.lab-row[data-case]').first().click({force:true});
+          check('mobile case dialog opens',await mobile.locator('#case-dialog').evaluate(d=>d.open));
+          const mDialog=await mobile.locator('#dialog-body').evaluate(e=>({client:e.clientHeight,scroll:e.scrollHeight,overflow:getComputedStyle(e).overflowY}));
+          check('mobile case dialog scrolls',mDialog.scroll<=mDialog.client+2||['auto','scroll'].includes(mDialog.overflow),JSON.stringify(mDialog));
+          await mobile.keyboard.press('Escape');
+          await mobile.locator('#contact').scrollIntoViewIfNeeded();
+          await mobile.locator('[data-contact="email"]').click({force:true});
+          check('mobile contact values fit',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+          const tapTargets=await mobile.locator('button,.pill,.case-open,.repo-link').evaluateAll(nodes=>nodes.filter(n=>getComputedStyle(n).display!=='none').map(n=>{
+            const r=n.getBoundingClientRect(); return {w:r.width,h:r.height,text:(n.textContent||'').trim().slice(0,30)};
+          }));
+          const tiny=tapTargets.filter(t=>t.w<36||t.h<36);
+          check('mobile tap targets acceptable',tiny.length===0,JSON.stringify(tiny.slice(0,8)));
+          await mobile.screenshot({path:'08-mobile-contact.png',fullPage:false});
+
+          check('no browser runtime errors',out.runtimeErrors.length===0,out.runtimeErrors.join('\n'));
+          fs.writeFileSync('full-audit-results.json',JSON.stringify(out,null,2));
+          await browser.close();
+          if(out.failures.length||out.runtimeErrors.length) process.exit(1);
+          NODE
+          node audit.mjs
+
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-portfolio-audit
+          path: |
+            full-audit-results.json
+            01-hero-dark.png
+            02-about-dark.png
+            03-projects-dark.png
+            04-roadmap-dark.png
+            05-contact-dark.png
+            06-contact-light.png
+            07-about-light.png
+            08-mobile-contact.png
