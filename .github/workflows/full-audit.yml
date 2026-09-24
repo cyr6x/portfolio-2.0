@@ -156,6 +156,13 @@ jobs:
           await page.locator('#work').scrollIntoViewIfNeeded();
           await page.waitForTimeout(250);
           check('three featured project cards',await page.locator('.case-card').count()===3,String(await page.locator('.case-card').count()));
+          const workSpacing=await page.evaluate(()=>{
+            const d=document.querySelector('.work-heading p')?.getBoundingClientRect();
+            const cards=[...document.querySelectorAll('.case-card')].map(e=>e.getBoundingClientRect()).filter(r=>r.bottom>0&&r.top<innerHeight);
+            const first=cards.sort((a,b)=>a.top-b.top)[0];
+            return d&&first?first.top-d.bottom:null;
+          });
+          check('project intro spacing remains balanced',workSpacing===null||workSpacing>=60&&workSpacing<=190,String(workSpacing));
           await page.screenshot({path:'03-projects-dark.png',fullPage:false});
 
           // Every case/lab/report entry should open a usable dialog.
@@ -275,6 +282,10 @@ jobs:
           check('mobile case dialog scrolls',mDialog.scroll<=mDialog.client+2||['auto','scroll'].includes(mDialog.overflow),JSON.stringify(mDialog));
           await mobile.keyboard.press('Escape');
           await mobile.locator('#contact').scrollIntoViewIfNeeded();
+          await mobile.waitForTimeout(180);
+          check('mobile contact CTA enters viewport',await mobile.locator('.contact-title').evaluate(e=>{
+            const r=e.getBoundingClientRect(); return r.top<innerHeight&&r.bottom>0;
+          }));
           await mobile.locator('[data-contact="email"]').click({force:true});
           check('mobile contact values fit',await mobile.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
           const tapTargets=await mobile.locator('button,.pill,.case-open,.repo-link').evaluateAll(nodes=>nodes.filter(n=>{
