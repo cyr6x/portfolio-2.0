@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
-      - name: Validate static site
+      - name: Validate static site and security
         shell: bash
         run: |
           set -euo pipefail
@@ -38,18 +38,65 @@ jobs:
           python - <<'PY'
           import re
           from pathlib import Path
+
           html = Path("index.html").read_text(encoding="utf-8")
+          scripts = [Path("app.js").read_text(encoding="utf-8"), Path("refine.js").read_text(encoding="utf-8")]
+          hero = Path("assets/cyril-hero-live.webp")
+
+          assert hero.exists() and 9000 < hero.stat().st_size < 50000, "hero asset integrity failed"
+
           ids = re.findall(r'\bid="([^"]+)"', html)
           assert len(ids) == len(set(ids)), "duplicate HTML ids"
           targets = set(ids)
           for href in re.findall(r'href="#([^"]+)"', html):
               assert href in targets, f"broken hash target: #{href}"
-          required = ['id="cosmos"', 'id="theme-toggle"', 'slice-d', 'id="contact-galaxy"']
+
+          required = ['id="cosmos"', 'id="theme-toggle"', 'slice-d', 'id="contact-galaxy"', 'id="traverse-progress"']
           for item in required:
               assert item in html, f"missing required UI hook: {item}"
-          assert "connect-src 'none'" in html, "CSP connect-src regression"
-          assert "<script>" not in html, "inline script violates CSP"
-          print("Static validation passed")
+
+          csp = re.search(r'http-equiv="Content-Security-Policy" content="([^"]+)"', html)
+          assert csp, "missing CSP"
+          policy = csp.group(1)
+          for directive in (
+              "default-src 'none'",
+              "base-uri 'none'",
+              "object-src 'none'",
+              "script-src 'self'",
+              "connect-src 'none'",
+              "form-action 'none'",
+              "upgrade-insecure-requests",
+          ):
+              assert directive in policy, f"CSP regression: {directive}"
+
+          assert "<form" not in html.lower(), "unexpected form attack surface"
+          assert not re.search(r'<script[^>]*>\s*[^<\s]', html, re.I), "inline script violates CSP"
+          assert not re.search(r'\son(?:click|load|error|mouseover|mouseenter|submit)\s*=', html, re.I), "inline event handler found"
+
+          for tag in re.findall(r'<a\b[^>]*target="_blank"[^>]*>', html, re.I):
+              rel = re.search(r'rel="([^"]*)"', tag, re.I)
+              assert rel and {'noopener','noreferrer'} <= set(rel.group(1).lower().split()), f"unsafe target=_blank: {tag}"
+
+          for url in re.findall(r'href="(https?://[^"]+)"', html, re.I):
+              assert url.startswith("https://"), f"mixed-content URL: {url}"
+
+          source = html + "\n" + "\n".join(scripts)
+          secret_patterns = [
+              r'ghp_[A-Za-z0-9]{20,}',
+              r'github_pat_[A-Za-z0-9_]{20,}',
+              r'AIza[A-Za-z0-9_-]{20,}',
+              r'sk-[A-Za-z0-9]{20,}',
+              r'BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY',
+              r'SUPABASE_SERVICE_ROLE',
+          ]
+          for pattern in secret_patterns:
+              assert not re.search(pattern, source, re.I), f"possible secret pattern found: {pattern}"
+
+          for js in scripts:
+              assert not re.search(r'\beval\s*\(', js), "eval() found"
+              assert not re.search(r'new\s+Function\s*\(', js), "new Function() found"
+
+          print("Static security/integrity validation passed")
           PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
@@ -57,4 +104,4 @@ jobs:
           path: .
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
