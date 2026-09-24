@@ -580,7 +580,7 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
 .face-slice{
   inset:-2.5%!important;
   z-index:9!important;
-  background-image:url("assets/cyril-hero-final.webp")!important;
+  background-image:url("assets/cyril-hero-live.webp")!important;
   background-repeat:no-repeat!important;
   background-size:104% 104%!important;
   background-position:center 42%!important;
@@ -2236,7 +2236,7 @@ html[data-theme="light"] footer{
   z-index:-2;
   inset:8% 9% -1%;
   border-radius:48% 48% 38% 38% / 44% 44% 28% 28%;
-  background:url("assets/cyril-hero-final.webp") center 42%/cover no-repeat;
+  background:url("assets/cyril-hero-live.webp") center 42%/cover no-repeat;
   filter:blur(34px) saturate(.45) brightness(.58);
   opacity:.22;
   transform:scale(.96);
