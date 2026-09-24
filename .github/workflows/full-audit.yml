@@ -218,7 +218,7 @@ jobs:
           check('Gmail present',(await email.innerText()).includes('baayacyril@gmail.com'));
           check('Outlook present',(await email.innerText()).includes('baayacyril@outlook.com'));
           check('LinkedIn is HTTPS',(await page.locator('a[href*="linkedin.com"]').getAttribute('href'))?.startsWith('https://'));
-          check('GitHub is HTTPS',(await page.locator('a[href*="github.com"]').getAttribute('href'))?.startsWith('https://'));
+          check('GitHub is HTTPS',(await page.locator('.contact-side a[href*="github.com"]').getAttribute('href'))?.startsWith('https://'));
           await page.screenshot({path:'05-contact-dark.png',fullPage:false});
 
           // Theme.
