@@ -1162,7 +1162,7 @@ html[data-booted="true"] .root-loader{display:none}
   --portrait-live-scale:1.035;
 }
 .portrait-stage.is-locked .portrait{
-  filter:grayscale(0) saturate(.94) contrast(1.09) brightness(1)!important;
+  filter:grayscale(1) saturate(.08) contrast(1.10) brightness(.94)!important;
 }
 .portrait-stage.is-locked .face-schematic{
   opacity:.28!important;
