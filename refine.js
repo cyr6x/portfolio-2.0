@@ -410,30 +410,36 @@
     });
   }
 
-  /* Living cosmic wallpaper. Intentionally lightweight and dependency-free. */
+  /* Living cosmic wallpaper. Dark mode carries the cinematic layer; stars gather into the contact gravity well. */
   const cosmos = document.querySelector('#cosmos');
   if (cosmos) {
     const ctx = cosmos.getContext('2d', {alpha:true});
     if (ctx) {
       let w = 1, h = 1, dpr = 1, frame = 0, last = 0, running = !reduced;
       let stars = [], motes = [], scrollWarp = 0, journeyProgress = 0;
+      const contactSection = document.querySelector('#contact');
+      const contactCore = document.querySelector('.contact-title');
+      const clamp01 = value => Math.max(0, Math.min(1, value));
 
       const makeField = () => {
-        const density = Math.max(95, Math.min(210, Math.floor((w * h) / 8400)));
+        const density = Math.max(130, Math.min(260, Math.floor((w * h) / 6500)));
         stars = Array.from({length:density}, (_, i) => ({
           x: Math.random() * w,
           y: Math.random() * h,
           z: Math.random() * .9 + .1,
-          r: i % 37 === 0 ? 1.55 : Math.random() * .72 + .18,
+          r: i % 37 === 0 ? 1.65 : Math.random() * .82 + .18,
           p: Math.random() * Math.PI * 2,
-          vx:(Math.random() - .5) * .018,
-          vy:(Math.random() - .5) * .012
+          vx:(Math.random() - .5) * .026,
+          vy:(Math.random() - .5) * .018,
+          orbit:Math.random() * 300 + 105,
+          squash:Math.random() * .28 + .34,
+          orbitSpeed:(Math.random() * .000018 + .000018) * (i % 2 ? 1 : -1)
         }));
-        motes = Array.from({length:26}, () => ({
+        motes = Array.from({length:34}, () => ({
           x:Math.random() * w,
           y:Math.random() * h,
           p:Math.random() * Math.PI * 2,
-          r:Math.random() * 95 + 55
+          r:Math.random() * 115 + 65
         }));
       };
 
@@ -452,18 +458,35 @@
       const sceneAccents = {
         identity:'47,111,175',
         projects:'47,111,175',
-        investigations:'142,149,160',
-        archive:'110,132,151',
-        arsenal:'119,142,130',
-        roadmap:'156,143,112',
+        investigations:'92,120,154',
+        archive:'78,111,145',
+        arsenal:'78,116,139',
+        roadmap:'91,113,139',
         contact:'47,111,175'
       };
       const palette = () => {
         const scene = document.body.dataset.scene || 'identity';
         const accent = sceneAccents[scene] || sceneAccents.identity;
-        return root.dataset.theme === 'light'
-          ? {star:'39,57,77', faint:'53,78,101', accent, nebula:'79,104,132'}
-          : {star:'223,232,242', faint:'126,146,171', accent, nebula:'72,82,112'};
+        return {star:'223,232,242', faint:'104,133,168', accent, nebula:'42,69,108'};
+      };
+
+      const contactPull = () => {
+        if (!contactSection) return clamp01((journeyProgress - .58) / .38);
+        const rect = contactSection.getBoundingClientRect();
+        const proximity = clamp01((h * 1.75 - rect.top) / (h * 1.75));
+        const journey = clamp01((journeyProgress - .52) / .44);
+        return Math.max(proximity * .92, journey * .78);
+      };
+
+      const contactSink = () => {
+        if (!contactCore) return {x:w * .5, y:h * 1.12};
+        const rect = contactCore.getBoundingClientRect();
+        const rawX = rect.left + rect.width * .5;
+        const rawY = rect.top + rect.height * .5;
+        return {
+          x:Math.max(w * .18, Math.min(w * .82, rawX)),
+          y:Math.max(h * .46, Math.min(h * 1.14, rawY))
+        };
       };
 
       const drawComet = (time, offset, direction) => {
@@ -491,14 +514,13 @@
       };
 
       const drawJourneyProbe = pal => {
-        if (journeyProgress < .08 || journeyProgress > .94) return;
-        const t = Math.max(0,Math.min(1,(journeyProgress-.08)/.86));
+        if (journeyProgress < .08 || journeyProgress > .88) return;
+        const t = clamp01((journeyProgress-.08)/.80);
         const x = cubic(-w*.08,w*.22,w*.78,w*1.08,t);
         const y = cubic(h*.72,h*.12,h*.88,h*.28,t);
         const t2 = Math.max(0,t-.032);
         const tx = cubic(-w*.08,w*.22,w*.78,w*1.08,t2);
         const ty = cubic(h*.72,h*.12,h*.88,h*.28,t2);
-
         const trail = ctx.createLinearGradient(tx,ty,x,y);
         trail.addColorStop(0,'rgba(' + pal.accent + ',0)');
         trail.addColorStop(1,'rgba(' + pal.accent + ',.52)');
@@ -508,7 +530,6 @@
         ctx.moveTo(tx,ty);
         ctx.lineTo(x,y);
         ctx.stroke();
-
         ctx.beginPath();
         ctx.arc(x,y,2.2,0,Math.PI*2);
         ctx.fillStyle = 'rgba(' + pal.accent + ',.9)';
@@ -516,12 +537,6 @@
         ctx.shadowColor = 'rgba(' + pal.accent + ',.7)';
         ctx.fill();
         ctx.shadowBlur = 0;
-
-        ctx.beginPath();
-        ctx.arc(x,y,8.5,0,Math.PI*2);
-        ctx.strokeStyle = 'rgba(' + pal.accent + ',.16)';
-        ctx.lineWidth = .7;
-        ctx.stroke();
       };
 
       const drawCosmos = (time = 0) => {
@@ -531,26 +546,34 @@
         }
         last = time;
         ctx.clearRect(0,0,w,h);
+
+        if (root.dataset.theme === 'light') {
+          if (running) frame = requestAnimationFrame(drawCosmos);
+          return;
+        }
+
         const pal = palette();
         const breathe = .5 + .5 * Math.sin(time * .00035);
+        const gather = contactPull();
+        const sink = contactSink();
 
-        const nebulaA = ctx.createRadialGradient(w*.25,h*.32,0,w*.25,h*.32,Math.max(w,h)*.48);
-        nebulaA.addColorStop(0,'rgba(' + pal.nebula + ',' + (.028 + breathe*.018) + ')');
-        nebulaA.addColorStop(.55,'rgba(' + pal.accent + ',' + (.012 + breathe*.008) + ')');
+        const nebulaA = ctx.createRadialGradient(w*.25,h*.32,0,w*.25,h*.32,Math.max(w,h)*.52);
+        nebulaA.addColorStop(0,'rgba(' + pal.nebula + ',' + (.045 + breathe*.022) + ')');
+        nebulaA.addColorStop(.55,'rgba(' + pal.accent + ',' + (.018 + breathe*.012) + ')');
         nebulaA.addColorStop(1,'rgba(' + pal.accent + ',0)');
         ctx.fillStyle = nebulaA;
         ctx.fillRect(0,0,w,h);
 
-        const nebulaB = ctx.createRadialGradient(w*.78,h*.7,0,w*.78,h*.7,Math.max(w,h)*.42);
-        nebulaB.addColorStop(0,'rgba(' + pal.accent + ',' + (.018 + (1-breathe)*.012) + ')');
+        const nebulaB = ctx.createRadialGradient(w*.78,h*.7,0,w*.78,h*.7,Math.max(w,h)*.46);
+        nebulaB.addColorStop(0,'rgba(' + pal.accent + ',' + (.026 + (1-breathe)*.018) + ')');
         nebulaB.addColorStop(1,'rgba(' + pal.accent + ',0)');
         ctx.fillStyle = nebulaB;
         ctx.fillRect(0,0,w,h);
 
         motes.forEach((m,i) => {
-          const drift = reduced ? 0 : Math.sin(time*.00012 + m.p) * 18;
+          const drift = reduced ? 0 : Math.sin(time*.00012 + m.p) * 22;
           const g = ctx.createRadialGradient(m.x+drift,m.y,0,m.x+drift,m.y,m.r);
-          g.addColorStop(0,'rgba(' + pal.faint + ',' + (i%7===0?.028:.014) + ')');
+          g.addColorStop(0,'rgba(' + pal.faint + ',' + (i%7===0?.035:.018) + ')');
           g.addColorStop(1,'rgba(' + pal.faint + ',0)');
           ctx.fillStyle = g;
           ctx.beginPath();
@@ -558,24 +581,61 @@
           ctx.fill();
         });
 
+        if (gather > .06) {
+          const halo = ctx.createRadialGradient(sink.x,sink.y,0,sink.x,sink.y,Math.max(210,Math.min(w,h)*.42));
+          halo.addColorStop(0,'rgba(' + pal.accent + ',' + (.035 + gather*.06) + ')');
+          halo.addColorStop(.48,'rgba(' + pal.accent + ',' + (gather*.022) + ')');
+          halo.addColorStop(1,'rgba(' + pal.accent + ',0)');
+          ctx.fillStyle = halo;
+          ctx.fillRect(0,0,w,h);
+        }
+
         stars.forEach((s,i) => {
+          const px=s.x, py=s.y;
           if (!reduced) {
-            s.x += s.vx * (1 + scrollWarp * 5);
-            s.y += s.vy * (1 + scrollWarp * 3);
-            if (s.x < -5) s.x = w + 5;
-            if (s.x > w + 5) s.x = -5;
-            if (s.y < -5) s.y = h + 5;
-            if (s.y > h + 5) s.y = -5;
+            s.x += s.vx * (1 + scrollWarp * 4);
+            s.y += s.vy * (1 + scrollWarp * 2.5);
+
+            if (gather > .02) {
+              const angle = s.p + time * s.orbitSpeed;
+              const ring = s.orbit * (.72 + gather * .28);
+              const targetX = sink.x + Math.cos(angle) * ring;
+              const targetY = sink.y + Math.sin(angle) * ring * s.squash;
+              const spring = (.001 + gather * .0048) * (.55 + s.z * .6);
+              s.x += (targetX - s.x) * spring;
+              s.y += (targetY - s.y) * spring;
+            }
+
+            if (gather < .08) {
+              if (s.x < -5) s.x = w + 5;
+              if (s.x > w + 5) s.x = -5;
+              if (s.y < -5) s.y = h + 5;
+              if (s.y > h + 5) s.y = -5;
+            }
           }
-          const twinkle = reduced ? .52 : .35 + Math.sin(time*.0011*s.z + s.p) * .22;
-          const alpha = Math.max(.08, twinkle * (.5 + s.z*.55));
-          ctx.fillStyle = 'rgba(' + pal.star + ',' + alpha + ')';
+
+          const twinkle = reduced ? .52 : .38 + Math.sin(time*.0011*s.z + s.p) * .24;
+          const alpha = Math.max(.08, twinkle * (.5 + s.z*.55) * (1 + gather*.28));
+          const isEnergy = gather > .18 && i % 7 === 0;
+
+          if (isEnergy) {
+            ctx.strokeStyle='rgba(' + pal.accent + ',' + (.035 + gather*.11) + ')';
+            ctx.lineWidth=.55 + s.z*.35;
+            ctx.beginPath();
+            ctx.moveTo(px,py);
+            ctx.lineTo(s.x,s.y);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = isEnergy
+            ? 'rgba(' + pal.accent + ',' + Math.min(.9,alpha + gather*.22) + ')'
+            : 'rgba(' + pal.star + ',' + alpha + ')';
           ctx.beginPath();
-          ctx.arc(s.x,s.y,s.r*(.65+s.z*.65),0,Math.PI*2);
+          ctx.arc(s.x,s.y,s.r*(.65+s.z*.7),0,Math.PI*2);
           ctx.fill();
 
           if (i % 43 === 0) {
-            ctx.strokeStyle='rgba(' + pal.accent + ',' + (.05 + breathe*.045) + ')';
+            ctx.strokeStyle='rgba(' + pal.accent + ',' + (.06 + breathe*.05 + gather*.05) + ')';
             ctx.lineWidth=.65;
             ctx.beginPath();
             ctx.moveTo(s.x-12,s.y);
@@ -584,12 +644,18 @@
           }
         });
 
+        if (gather < .78) {
+          drawComet(time,.12,1);
+          drawComet(time,.61,-1);
+          drawJourneyProbe(pal);
+        }
+
         if (running) frame = requestAnimationFrame(drawCosmos);
       };
 
       addEventListener('scroll', () => {
         const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-        journeyProgress = Math.max(0,Math.min(1,scrollY / max));
+        journeyProgress = clamp01(scrollY / max);
         scrollWarp = journeyProgress;
       }, {passive:true});
       addEventListener('resize', resizeCosmos, {passive:true});
@@ -606,6 +672,9 @@
       });
 
       resizeCosmos();
+      const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+      journeyProgress = clamp01(scrollY / max);
+      scrollWarp = journeyProgress;
       if (reduced) drawCosmos(0);
       else frame = requestAnimationFrame(drawCosmos);
     }
