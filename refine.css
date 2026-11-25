@@ -909,31 +909,6 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
   transition:translate .12s ease-out,scale .16s ease-out,filter .2s ease;
   isolation:isolate;
 }
-.gravity-link .event-horizon{
-  position:absolute;
-  z-index:-1;
-  width:54px;
-  height:54px;
-  left:var(--horizon-x,50%);
-  top:var(--horizon-y,50%);
-  translate:-50% -50%;
-  border-radius:50%;
-  pointer-events:none;
-  opacity:var(--horizon-alpha,0);
-  background:
-    radial-gradient(circle,#000 0 16%,rgba(47,111,175,.9) 18%,rgba(49,74,114,.25) 27%,transparent 54%);
-  filter:blur(.15px);
-  scale:var(--horizon-scale,.45);
-  transition:opacity .14s ease,scale .18s ease;
-  animation:event-horizon-spin 2.2s linear infinite;
-}
-.gravity-link.is-gravity{
-  filter:drop-shadow(0 0 8px rgba(47,111,175,.12));
-}
-@keyframes event-horizon-spin{
-  50%{rotate:180deg;transform:scaleX(1.28) scaleY(.74)}
-  to{rotate:360deg}
-}
 
 /* Scroll phase polish: face collapses, neural field expands, planet hops resolve. */
 .portrait-stage.phase-ssh .portrait{
@@ -1005,10 +980,14 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
 /* Motion accessibility remains authoritative. */
 @media(prefers-reduced-motion:reduce){
   #cosmos{opacity:.45}
-  .face-schematic,.face-slice,.scan-swoop,
-  .degree:before,.degree-line h3:after,
-  .contact-card:before,.contact-card:after,.contact-title:before,
-  .event-horizon{animation:none!important}
+  .face-schematic,
+.face-slice,
+.scan-swoop,
+.degree:before,
+.degree-line h3:after,
+.contact-card:before,
+.contact-card:after,
+.contact-title:before{animation:none!important}
   .gravity-link{translate:0 0!important;scale:1!important}
   .degree-line:hover{translate:0}
 }
@@ -1095,92 +1074,6 @@ html[data-theme="light"] .theme-orbit i{background:#2f5d89;box-shadow:0 0 9px #2
   translate:0 -2px;
 }
 html[data-booted="true"] .root-loader{display:none}
-
-.neural-lock{
-  position:absolute;
-  z-index:20;
-  right:clamp(20px,5vw,72px);
-  bottom:35px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  min-height:48px;
-  padding:8px 14px 8px 10px;
-  border:1px solid var(--line);
-  border-radius:999px;
-  background:rgba(7,9,12,.64);
-  color:var(--silver);
-  backdrop-filter:blur(14px);
-  cursor:pointer;
-  transition:.3s var(--ease);
-}
-.neural-lock:hover{
-  border-color:rgba(47,111,175,.4);
-  transform:translateY(-2px);
-}
-.neural-lock-dot{
-  width:26px;
-  height:26px;
-  border:1px solid var(--strong);
-  border-radius:50%;
-  position:relative;
-  flex:0 0 auto;
-}
-.neural-lock-dot:before,
-.neural-lock-dot:after{
-  content:"";
-  position:absolute;
-  border-radius:50%;
-}
-.neural-lock-dot:before{
-  inset:5px;
-  border:1px dashed var(--red);
-  animation:ring-spin 8s linear infinite;
-}
-.neural-lock-dot:after{
-  width:4px;
-  height:4px;
-  left:10px;
-  top:10px;
-  background:var(--red);
-  box-shadow:0 0 10px var(--red);
-}
-.neural-lock-copy{
-  display:grid;
-  gap:1px;
-  text-align:left;
-}
-.neural-lock-copy b{
-  font:600 .55rem "JetBrains Mono";
-  letter-spacing:.09em;
-}
-.neural-lock-copy small{
-  color:var(--dim);
-  font:500 .47rem "JetBrains Mono";
-  letter-spacing:.04em;
-}
-.neural-lock[aria-pressed="true"]{
-  border-color:rgba(47,111,175,.5);
-  box-shadow:0 0 35px rgba(47,111,175,.14);
-}
-.neural-lock[aria-pressed="true"] .neural-lock-dot{
-  background:rgba(47,111,175,.10);
-  box-shadow:0 0 26px rgba(47,111,175,.25);
-}
-.portrait-stage.is-locked{
-  --portrait-live-scale:1.035;
-}
-.portrait-stage.is-locked .portrait{
-  filter:grayscale(1) saturate(.08) contrast(1.10) brightness(.94)!important;
-}
-.portrait-stage.is-locked .face-schematic{
-  opacity:.28!important;
-  animation:none!important;
-}
-.portrait-stage.is-locked .security-core{
-  border-color:rgba(47,111,175,.6);
-  box-shadow:inset -12px -8px 32px #000,0 0 95px rgba(47,111,175,.26)!important;
-}
 
 /* Cinematic section atmospheres: same galaxy, different worlds. */
 body{
@@ -1269,25 +1162,13 @@ main:after{
 }
 
 @media(max-width:820px){
-  .neural-lock{
-    right:18px;
-    bottom:104px;
-    min-width:44px;
-    width:44px;
-    height:44px;
-    padding:8px;
-    justify-content:center;
-  }
-  .neural-lock-copy{display:none}
-  .neural-lock-dot{width:24px;height:24px}
   .root-loader-core strong{font-size:clamp(4.7rem,25vw,8rem)}
   main:after{width:100vw;height:100vw;right:-55vw}
 }
 @media(prefers-reduced-motion:reduce){
   .root-loader-track i,
-  .neural-lock-dot:before,
-  .scene-kinetic,
-  .archive-groups .lab-row:before{transition:none!important;animation:none!important}
+.scene-kinetic,
+.archive-groups .lab-row:before{transition:none!important;animation:none!important}
 }
 
 
@@ -1642,11 +1523,6 @@ html[data-theme="light"] .access-terminal{
 html[data-theme="light"] .terminal-heading,
 html[data-theme="light"] .ssh-line{color:#435162!important}
 html[data-theme="light"] .terminal-heading span:first-child{color:#2f6faf!important}
-html[data-theme="light"] .neural-lock{
-  background:rgba(250,252,254,.80)!important;
-  color:#2d3947!important;
-  box-shadow:0 12px 40px rgba(35,49,64,.06);
-}
 html[data-theme="light"] .case-card,
 html[data-theme="light"] .investigation-grid article,
 html[data-theme="light"] .skill-card,
@@ -1761,7 +1637,12 @@ html.theme-switching body:before{
   .contact-value{max-width:58%}
 }
 @media(pointer:coarse){
-  .pill,.case-open,.repo-link,.lab-row,.theme-toggle,.neural-lock,.dialog-close{
+  .pill,
+.case-open,
+.repo-link,
+.lab-row,
+.theme-toggle,
+.dialog-close{
     min-height:44px;
   }
 }
@@ -2042,8 +1923,6 @@ html[data-theme="light"] .traverse-progress b{
 }
 
 /* Remove secondary interaction theatre from normal browsing. */
-.neural-lock{display:none!important}
-.event-horizon{display:none!important}
 .gravity-link{
   translate:0 0!important;
   scale:1!important;
