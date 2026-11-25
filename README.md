@@ -4,7 +4,7 @@ Recruiter-focused cybersecurity portfolio for Cyril Baaya.
 
 ## Design direction
 
-- Matte-black and silver foundation with a restrained Ferrari-red accent
+- Matte-black and silver foundation with a single deep galactic-blue accent, defined once as design tokens for dark and light themes
 - Editorial typography and modular pacing inspired by modern performance brands
 - Persistent breathing neural mesh with live signal pulses, pointer response and reduced-motion support
 - Portrait-first hero with hover-only scan slices, feathered image edges and a reversible portrait → SSH → galaxy sequence
@@ -21,6 +21,18 @@ Recruiter-focused cybersecurity portfolio for Cyril Baaya.
 ## Stack
 
 Pure HTML5, CSS and minimal vanilla JavaScript. No build step or framework is required.
+
+## Tests
+
+A whitebox suite (Node's built-in test runner + Playwright) guards security posture, animation discipline,
+spacing, contrast and palette in both themes:
+
+```bash
+node --test tests/*.test.mjs
+```
+
+It needs `playwright` (or `playwright-core` with `CHROME_PATH` set). CI runs it on every push and pull request and
+gates the Pages deploy. See [docs/plans/ui-hardening-pass.md](docs/plans/ui-hardening-pass.md) for what it covers.
 
 ## Deploy
 

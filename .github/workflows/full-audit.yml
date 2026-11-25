@@ -3,6 +3,8 @@ name: Full Portfolio Audit
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -69,6 +71,9 @@ jobs:
         run: |
           CHROME=$(which google-chrome || which chromium || which chromium-browser)
           echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+
+      - name: Whitebox test suite
+        run: node --test --test-reporter=spec tests/*.test.mjs
 
       - name: Start site
         run: |
