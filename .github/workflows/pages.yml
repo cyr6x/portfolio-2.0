@@ -13,7 +13,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+      - name: Install browser driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.55.0
+      - name: Locate Chrome
+        run: echo "CHROME_PATH=$(which google-chrome || which chromium || which chromium-browser)" >> "$GITHUB_ENV"
+      - name: Whitebox test suite
+        run: node --test --test-reporter=spec tests/*.test.mjs
+
   deploy:
+    needs: test
     permissions:
       contents: read
       pages: write
@@ -35,6 +52,7 @@ jobs:
           set -euo pipefail
           node --check app.js
           node --check refine.js
+          node --check theme-init.js
           python - <<'PY'
           import re
           from pathlib import Path
@@ -98,10 +116,18 @@ jobs:
 
           print("Static security/integrity validation passed")
           PY
+      - name: Stage public files only
+        # Explicit allow-list: workflows, tests, docs and unused assets are never published.
+        run: |
+          set -euo pipefail
+          mkdir -p _site/assets
+          cp index.html styles.css refine.css app.js refine.js theme-init.js .nojekyll _site/
+          cp assets/dp4-ultimate-hero-hires.webp _site/assets/
+          find _site -type f | sort
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
