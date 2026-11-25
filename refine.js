@@ -23,77 +23,6 @@
     });
   }
 
-  const correctedCases = {
-    sirts: {
-      title: 'CCorp SIRTS — Final-Year Capstone',
-      lede: 'My BSc final-year capstone project: an incident and service-request tracking system shaped around the operational needs of a fictional SOC.',
-      role: 'Capstone project work delivered in a team context, with my portfolio evidence focused on incident workflow, role boundaries, auditability, testing and technical evaluation.',
-      method: 'Mapped incident and service-request lifecycles, role-based access, state transitions and audit requirements into a database-backed workflow that could be tested against defined requirements.',
-      evidence: [
-        'Final-year capstone project and report evidence',
-        'Role-based incident and request workflows',
-        'Audit history and lifecycle state tracking',
-        'Testing, requirements and implementation documentation'
-      ],
-      learning: 'Incident-response tooling is credible only when ownership, state, escalation and evidence remain clear from intake to closure.',
-      next: 'Complete the final capstone evaluation and preserve the production-readiness evidence alongside the academic report.',
-      repo: 'https://github.com/cyr6x/ccorp-sirts'
-    },
-    ctech: {
-      title: 'C TECH Inventory Management System — Coursework Build',
-      lede: 'A general software-development coursework project covering inventory, orders, suppliers, users and reporting. It is included as evidence of systems delivery, not as a cybersecurity solution.',
-      role: 'Coursework build demonstrating end-to-end application thinking, data handling, testing and documentation.',
-      method: 'Connected interface, application logic and persistent data into operational workflows for stock, suppliers, orders, users and reports.',
-      evidence: [
-        'Inventory and supplier workflows',
-        'Order and reporting functions',
-        'User administration and audit records',
-        'Coursework architecture, testing and documentation'
-      ],
-      learning: 'The value here is systems thinking and delivery discipline rather than a security claim.',
-      next: 'Keep it as supporting coursework evidence while security projects remain the centre of the portfolio.',
-      repo: 'https://github.com/cyr6x/CTECH-IMS'
-    }
-  };
-
-  const dialog = document.querySelector('#case-dialog');
-  const dialogBody = document.querySelector('#dialog-body');
-
-  function renderCorrectedCase(key) {
-    const data = correctedCases[key];
-    if (!data || !dialog || !dialogBody) return false;
-
-    dialogBody.innerHTML =
-      '<h2>' + data.title + '</h2>' +
-      '<p class="dialog-lede">' + data.lede + '</p>' +
-      '<div class="dialog-grid">' +
-        '<section class="dialog-block"><h3>My position</h3><p>' + data.role + '</p></section>' +
-        '<section class="dialog-block"><h3>Method</h3><p>' + data.method + '</p></section>' +
-        '<section class="dialog-block"><h3>Evidence</h3><ul>' +
-          data.evidence.map(item => '<li>' + item + '</li>').join('') +
-        '</ul></section>' +
-        '<section class="dialog-block"><h3>What changed in my thinking</h3><p>' + data.learning + '</p></section>' +
-        '<section class="dialog-block"><h3>Next move</h3><p>' + data.next + '</p></section>' +
-      '</div>' +
-      '<div class="dialog-repo"><a class="pill" href="' + data.repo + '" target="_blank" rel="noreferrer noopener">Inspect repository ↗</a></div>';
-
-    dialog.showModal();
-    return true;
-  }
-
-  document.addEventListener('click', event => {
-    if (!(event.target instanceof Element)) return;
-    const trigger = event.target.closest('[data-case] .case-open, .lab-row[data-case]');
-    if (!trigger) return;
-    const owner = trigger.closest('[data-case]');
-    const key = owner && owner.dataset.case;
-    if (!correctedCases[key]) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    renderCorrectedCase(key);
-  }, true);
-
   const contacts = {
     email: {
       values: ['baayacyril@gmail.com', 'baayacyril@outlook.com'],
@@ -178,7 +107,7 @@
   let stars = [];
   let spherePoints = [];
   let frame = 0;
-  let running = !reduced;
+  let running = false;
   let mouseX = 0;
   let mouseY = 0;
 
@@ -219,7 +148,7 @@
     spherePoints = makeSphere(Math.max(190, Math.min(390, Math.floor(width / 3))));
   }
 
-  function draw(time = 0) {
+  function drawContactGalaxy(time = 0) {
     ctx.clearRect(0, 0, width, height);
 
     stars.forEach(star => {
@@ -236,9 +165,9 @@
     const rot = reduced ? 0.45 : time * 0.00007;
 
     const glow = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius * 1.28);
-    glow.addColorStop(0, 'rgba(47,111,175,.06)');
-    glow.addColorStop(0.58, 'rgba(47,111,175,.018)');
-    glow.addColorStop(1, 'rgba(47,111,175,0)');
+    glow.addColorStop(0, 'rgba(' + ACCENT + ',.06)');
+    glow.addColorStop(0.58, 'rgba(' + ACCENT + ',.018)');
+    glow.addColorStop(1, 'rgba(' + ACCENT + ',0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(cx, cy, radius * 1.3, 0, Math.PI * 2);
@@ -251,7 +180,7 @@
     for (let ring = 0; ring < 3; ring++) {
       ctx.beginPath();
       ctx.ellipse(0, 0, radius * (1.05 + ring * 0.2), radius * (0.28 + ring * 0.055), 0, 0, Math.PI * 2);
-      ctx.strokeStyle = ring === 0 ? 'rgba(47,111,175,.17)' : 'rgba(211,219,230,.08)';
+      ctx.strokeStyle = ring === 0 ? 'rgba(' + ACCENT + ',.17)' : 'rgba(211,219,230,.08)';
       ctx.lineWidth = ring === 0 ? 1.1 : 0.7;
       ctx.setLineDash(ring === 1 ? [5, 12] : []);
       ctx.stroke();
@@ -273,14 +202,14 @@
       ctx.beginPath();
       ctx.arc(x, y, dot, 0, Math.PI * 2);
       ctx.fillStyle = point.hot
-        ? 'rgba(47,111,175,' + Math.min(0.8, alpha + 0.35) + ')'
+        ? 'rgba(' + ACCENT + ',' + Math.min(0.8, alpha + 0.35) + ')'
         : 'rgba(218,226,236,' + alpha + ')';
       ctx.fill();
 
       if (index % 47 === 0 && rz > -0.15) {
         ctx.beginPath();
         ctx.arc(x, y, 5.5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(47,111,175,.13)';
+        ctx.strokeStyle = 'rgba(' + ACCENT + ',.13)';
         ctx.stroke();
       }
     });
@@ -291,7 +220,7 @@
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    if (running) frame = requestAnimationFrame(draw);
+    if (running) frame = requestAnimationFrame(drawContactGalaxy);
   }
 
   canvas.addEventListener('pointermove', event => {
@@ -306,30 +235,31 @@
     mouseY = 0;
   });
 
-  const observer = new IntersectionObserver(entries => {
-    const visible = entries.some(entry => entry.isIntersecting);
-    if (reduced) {
-      running = false;
-      draw(0);
-      return;
-    }
-    if (visible && !running) {
+  // Animate only while on screen, in a visible tab, in dark theme (the canvas is hidden in light).
+  let onScreen = false;
+  const syncContactGalaxy = () => {
+    const next = !reduced && onScreen && !document.hidden && document.documentElement.dataset.theme !== 'light';
+    if (next && !running) {
       running = true;
-      frame = requestAnimationFrame(draw);
-    } else if (!visible && running) {
+      frame = requestAnimationFrame(drawContactGalaxy);
+    } else if (!next && running) {
       running = false;
       cancelAnimationFrame(frame);
     }
-  }, {threshold:0.05});
+  };
+  new IntersectionObserver(entries => {
+    onScreen = entries.some(entry => entry.isIntersecting);
+    syncContactGalaxy();
+  }, {threshold:0.05}).observe(canvas);
+  document.addEventListener('visibilitychange', syncContactGalaxy);
+  addEventListener('cosmic-theme-change', syncContactGalaxy);
 
   size();
-  if (reduced) draw(0);
-  else frame = requestAnimationFrame(draw);
-  observer.observe(canvas);
+  drawContactGalaxy(0);
 
   addEventListener('resize', () => {
     size();
-    if (!running) draw(0);
+    if (!running) drawContactGalaxy(0);
   }, {passive:true});
 })();
 
@@ -371,9 +301,14 @@
     };
     requestAnimationFrame(tickBoot);
     rootLoaderSkip?.addEventListener('click', finishRootBoot);
-    addEventListener('keydown', event => {
-      if ((event.key === 'Enter' || event.key === 'Escape') && !rootLoader.classList.contains('is-leaving')) finishRootBoot();
-    }, {once:true});
+    // Not {once:true}: that consumed the listener on the first key of any kind (Tab, Shift…),
+    // leaving Enter/Escape dead for keyboard users.
+    const onBootKey = event => {
+      if (event.key !== 'Enter' && event.key !== 'Escape') return;
+      removeEventListener('keydown', onBootKey);
+      finishRootBoot();
+    };
+    addEventListener('keydown', onBootKey);
   }
 
   const themeToggle = document.querySelector('#theme-toggle');
@@ -383,7 +318,7 @@
     const next = theme === 'light' ? 'light' : 'dark';
     if (persist) {
       root.classList.add('theme-switching');
-      setTimeout(() => root.classList.remove('theme-switching'), 560);
+      setTimeout(() => root.classList.remove('theme-switching'), 700);
     }
     root.dataset.theme = next;
     root.style.colorScheme = next;
@@ -455,18 +390,16 @@
         makeField();
       };
 
+      // Quieter blue-greys for mid-page scenes; the token accent for hero, projects and contact.
       const sceneAccents = {
-        identity:'47,111,175',
-        projects:'47,111,175',
         investigations:'92,120,154',
         archive:'78,111,145',
         arsenal:'78,116,139',
-        roadmap:'91,113,139',
-        contact:'47,111,175'
+        roadmap:'91,113,139'
       };
       const palette = () => {
         const scene = document.body.dataset.scene || 'identity';
-        const accent = sceneAccents[scene] || sceneAccents.identity;
+        const accent = sceneAccents[scene] || ACCENT;
         return {star:'223,232,242', faint:'104,133,168', accent, nebula:'42,69,108'};
       };
 
@@ -548,7 +481,8 @@
         ctx.clearRect(0,0,w,h);
 
         if (root.dataset.theme === 'light') {
-          if (running) frame = requestAnimationFrame(drawCosmos);
+          // Light theme hides this layer: stop scheduling frames until the theme flips back.
+          running = false;
           return;
         }
 
@@ -659,7 +593,12 @@
         scrollWarp = journeyProgress;
       }, {passive:true});
       addEventListener('resize', resizeCosmos, {passive:true});
-      addEventListener('cosmic-theme-change', () => { if (!running) drawCosmos(0); });
+      addEventListener('cosmic-theme-change', () => {
+        if (running) return;
+        if (reduced || document.hidden) { drawCosmos(0); return; }
+        running = true;
+        frame = requestAnimationFrame(drawCosmos);
+      });
       document.addEventListener('visibilitychange', () => {
         if (reduced) return;
         if (document.hidden && running) {
@@ -880,18 +819,43 @@
     });
   }
 
+  const contactTitle = contactCard && contactCard.querySelector('.contact-title');
+  const TITLE_CLEARANCE = 22;
+
+  // Pushes an orbit position outward along its own direction until the pill's nearest edge
+  // clears the title circle. A fixed ellipse cannot guarantee this for wide pills on diagonals.
+  function clearTitle(x, y, halfW, halfH, cx, cy, radius) {
+    let dx = x - cx;
+    let dy = y - cy;
+    for (let i = 0; i < 60; i++) {
+      const gapX = Math.max(0, Math.abs(dx) - halfW);
+      const gapY = Math.max(0, Math.abs(dy) - halfH);
+      if (Math.hypot(gapX, gapY) >= radius) break;
+      dx *= 1.03;
+      dy *= 1.03;
+    }
+    return [cx + dx, cy + dy];
+  }
+
   function drawContactOrbit(dt) {
     if (!desktopQuery.matches || !contactCard || !contactNodes.length) return;
+    // Read every measurement before writing any style.
     const rect = contactCard.getBoundingClientRect();
+    const title = contactTitle ? contactTitle.getBoundingClientRect() : null;
+    const sizes = contactNodes.map(node => [node.offsetWidth / 2, node.offsetHeight / 2]);
     const rx = Math.min(rect.width * .355, 420);
     const ry = Math.min(rect.height * .31, 230);
+    const tcx = title ? title.left + title.width / 2 - (rect.left + rect.width / 2) : 0;
+    const tcy = title ? title.top + title.height / 2 - (rect.top + rect.height / 2) : 0;
+    const radius = title ? Math.min(title.width, title.height) / 2 + TITLE_CLEARANCE : 0;
     const held = contactNodes.find(node => node.matches(':hover,:focus-visible'));
     if (!reduced && !held) contactClock += dt * .000095;
 
     contactNodes.forEach((node,index) => {
       const angle = contactPhases[index % contactPhases.length] + contactClock;
-      node.style.setProperty('--contact-orbit-x',(Math.cos(angle)*rx).toFixed(2) + 'px');
-      node.style.setProperty('--contact-orbit-y',(Math.sin(angle)*ry).toFixed(2) + 'px');
+      const [x, y] = clearTitle(Math.cos(angle) * rx, Math.sin(angle) * ry, sizes[index][0], sizes[index][1], tcx, tcy, radius);
+      node.style.setProperty('--contact-orbit-x', x.toFixed(2) + 'px');
+      node.style.setProperty('--contact-orbit-y', y.toFixed(2) + 'px');
       node.classList.toggle('orbit-held',node === held);
     });
   }
@@ -912,28 +876,40 @@
     });
   }
 
+  // The loop only runs while the planets or the contact card are on screen, on desktop, in a visible tab.
+  let planetsOnScreen = false;
+  let contactOnScreen = false;
+  let running = false;
+
   function orbitFrame(now) {
+    if (!running) return;
     const dt = Math.min(48,Math.max(0,now-last));
     last = now;
-    drawMoons(dt);
-    drawContactOrbit(dt);
+    if (planetsOnScreen) drawMoons(dt);
+    if (contactOnScreen) drawContactOrbit(dt);
     frame = requestAnimationFrame(orbitFrame);
   }
 
-  desktopQuery.addEventListener?.('change', clearMobileState);
-
-  if (reduced) {
-    drawMoons(0);
-    drawContactOrbit(0);
-  } else {
-    frame = requestAnimationFrame(orbitFrame);
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        cancelAnimationFrame(frame);
-      } else {
-        last = performance.now();
-        frame = requestAnimationFrame(orbitFrame);
-      }
-    });
+  function syncOrbit() {
+    const next = !reduced && !document.hidden && desktopQuery.matches && (planetsOnScreen || contactOnScreen);
+    if (next && !running) {
+      running = true;
+      last = performance.now();
+      frame = requestAnimationFrame(orbitFrame);
+    } else if (!next && running) {
+      running = false;
+      cancelAnimationFrame(frame);
+    }
   }
+
+  const watch = (node, set) => node && new IntersectionObserver(([entry]) => { set(entry.isIntersecting); syncOrbit(); }).observe(node);
+  watch(planetSystem, value => { planetsOnScreen = value; });
+  watch(contactCard, value => { contactOnScreen = value; });
+  document.addEventListener('visibilitychange', syncOrbit);
+  desktopQuery.addEventListener?.('change', () => { clearMobileState(); syncOrbit(); });
+  addEventListener('resize', () => { if (!running) { drawMoons(0); drawContactOrbit(0); } }, {passive:true});
+
+  // Static layout for reduced motion (and a correct first paint for everyone).
+  drawMoons(0);
+  drawContactOrbit(0);
 })();
